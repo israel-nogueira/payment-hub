@@ -1,0 +1,450 @@
+{
+  "info": {
+    "name": "PaymentHub - Complete API Collection (With Tests)",
+    "_postman_id": "payment-hub-collection-v1-complete",
+    "description": "Complete collection for PaymentHub with automated tests\n\nAuthor: Israel Nogueira\nEmail: israel@feats.com.br\nGitHub: https://github.com/israel-nogueira/payment-hub",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Helpers globais disponíveis em todos os requests",
+          "pm.globals.set(\"generateCPF\", function() {",
+          "    const random = () => Math.floor(Math.random() * 10);",
+          "    return `${random()}${random()}${random()}.${random()}${random()}${random()}.${random()}${random()}${random()}-${random()}${random()}`;",
+          "});",
+          "",
+          "pm.globals.set(\"generateCNPJ\", function() {",
+          "    const random = () => Math.floor(Math.random() * 10);",
+          "    return `${random()}${random()}.${random()}${random()}${random()}.${random()}${random()}${random()}/${random()}${random()}${random()}${random()}-${random()}${random()}`;",
+          "});",
+          "",
+          "// Timestamp atual",
+          "pm.environment.set(\"TIMESTAMP\", new Date().toISOString());",
+          "",
+          "// Data futura (30 dias)",
+          "const futureDate = new Date();",
+          "futureDate.setDate(futureDate.getDate() + 30);",
+          "pm.environment.set(\"FUTURE_DATE\", futureDate.toISOString().split('T')[0]);"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Testes que rodam em TODAS as requisições",
+          "",
+          "// Status code deve ser sucesso (200-299)",
+          "pm.test(\"Status code is successful\", function () {",
+          "    pm.response.to.be.success;",
+          "});",
+          "",
+          "// Response deve ser JSON",
+          "pm.test(\"Response is JSON\", function () {",
+          "    pm.response.to.be.json;",
+          "});",
+          "",
+          "// Response time deve ser < 2000ms",
+          "pm.test(\"Response time is acceptable\", function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+          "});",
+          "",
+          "// Headers de segurança",
+          "pm.test(\"Has security headers\", function () {",
+          "    pm.response.to.have.header(\"Content-Type\");",
+          "});"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "PIX",
+      "item": [
+        {
+          "name": "Create PIX Payment",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Gera dados dinâmicos para o cliente",
+                  "pm.environment.set(\"RANDOM_EMAIL\", `test_${Date.now()}@email.com`);",
+                  "pm.environment.set(\"RANDOM_CPF\", \"12345678900\");",
+                  "pm.environment.set(\"RANDOM_AMOUNT\", (Math.random() * 1000 + 10).toFixed(2));"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"PIX payment created successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    ",
+                  "    const response = pm.response.json();",
+                  "    ",
+                  "    pm.expect(response).to.have.property('success');",
+                  "    pm.expect(response).to.have.property('transaction_id');",
+                  "    pm.expect(response).to.have.property('status');",
+                  "    pm.expect(response.success).to.be.true;",
+                  "    ",
+                  "    if (response.transaction_id) {",
+                  "        pm.environment.set(\"TRANSACTION_ID\", response.transaction_id);",
+                  "        console.log(\"✅ Transaction ID saved:\", response.transaction_id);",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"PIX payment has valid status\", function () {",
+                  "    const response = pm.response.json();",
+                  "    const validStatuses = ['approved', 'pending', 'processing'];",
+                  "    pm.expect(validStatuses).to.include(response.status);",
+                  "});",
+                  "",
+                  "pm.test(\"PIX payment has amount\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.amount).to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": {{RANDOM_AMOUNT}},\n  \"currency\": \"BRL\",\n  \"description\": \"Pagamento do pedido #123\",\n  \"customer_name\": \"João Silva\",\n  \"customer_document\": \"{{RANDOM_CPF}}\",\n  \"customer_email\": \"{{RANDOM_EMAIL}}\",\n  \"expires_in_minutes\": 30,\n  \"metadata\": {\n    \"order_id\": \"123\",\n    \"store_id\": \"loja-01\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/pix/payments",
+              "host": ["{{BASE_URL}}"],
+              "path": ["pix", "payments"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get PIX QR Code",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/pix/payments/{{TRANSACTION_ID}}/qrcode",
+              "host": ["{{BASE_URL}}"],
+              "path": ["pix", "payments", "{{TRANSACTION_ID}}", "qrcode"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get PIX Copy & Paste",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/pix/payments/{{TRANSACTION_ID}}/copy-paste",
+              "host": ["{{BASE_URL}}"],
+              "path": ["pix", "payments", "{{TRANSACTION_ID}}", "copy-paste"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Credit Card",
+      "item": [
+        {
+          "name": "Tokenize Card",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Card tokenized successfully\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    ",
+                  "    const response = pm.response.json();",
+                  "    const token = response.token || response.card_token || response;",
+                  "    ",
+                  "    pm.expect(token).to.be.a('string');",
+                  "    pm.expect(token.length).to.be.above(10);",
+                  "    ",
+                  "    pm.environment.set(\"CARD_TOKEN\", token);",
+                  "    console.log(\"✅ Card token saved:\", token);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"card_number\": \"4111111111111111\",\n  \"card_holder_name\": \"JOAO SILVA\",\n  \"card_expiry_month\": \"12\",\n  \"card_expiry_year\": \"2028\",\n  \"card_cvv\": \"123\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/credit-card/tokenize",
+              "host": ["{{BASE_URL}}"],
+              "path": ["credit-card", "tokenize"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Credit Card Payment",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const futureYear = new Date().getFullYear() + 2;",
+                  "pm.environment.set(\"TEST_CARD_YEAR\", futureYear.toString());",
+                  "pm.environment.set(\"TEST_CARD_MONTH\", \"12\");"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Credit card payment processed\", function () {",
+                  "    const response = pm.response.json();",
+                  "    ",
+                  "    pm.expect(response).to.have.property('success');",
+                  "    pm.expect(response).to.have.property('transaction_id');",
+                  "    ",
+                  "    if (response.transaction_id) {",
+                  "        pm.environment.set(\"TRANSACTION_ID\", response.transaction_id);",
+                  "        console.log(\"✅ Credit card transaction saved:\", response.transaction_id);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 250.00,\n  \"currency\": \"BRL\",\n  \"card_number\": \"4111111111111111\",\n  \"card_holder_name\": \"JOAO SILVA\",\n  \"card_expiry_month\": \"{{TEST_CARD_MONTH}}\",\n  \"card_expiry_year\": \"{{TEST_CARD_YEAR}}\",\n  \"card_cvv\": \"123\",\n  \"installments\": 3,\n  \"capture\": true,\n  \"description\": \"Compra parcelada\",\n  \"customer_name\": \"João Silva\",\n  \"customer_email\": \"joao@email.com\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/credit-card/payments",
+              "host": ["{{BASE_URL}}"],
+              "path": ["credit-card", "payments"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "Create Customer",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const timestamp = Date.now();",
+                  "pm.environment.set(\"CUSTOMER_EMAIL\", `customer_${timestamp}@test.com`);",
+                  "pm.environment.set(\"CUSTOMER_NAME\", `Test Customer ${timestamp}`);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Customer created successfully\", function () {",
+                  "    const response = pm.response.json();",
+                  "    ",
+                  "    pm.expect(response).to.have.property('success');",
+                  "    pm.expect(response).to.have.property('customer_id');",
+                  "    pm.expect(response.success).to.be.true;",
+                  "    ",
+                  "    if (response.customer_id) {",
+                  "        pm.environment.set(\"CUSTOMER_ID\", response.customer_id);",
+                  "        console.log(\"✅ Customer ID saved:\", response.customer_id);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{CUSTOMER_NAME}}\",\n  \"email\": \"{{CUSTOMER_EMAIL}}\",\n  \"document_number\": \"12345678900\",\n  \"phone\": \"11987654321\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["customers"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "Get Transaction Status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Transaction status retrieved\", function () {",
+                  "    const response = pm.response.json();",
+                  "    ",
+                  "    pm.expect(response).to.have.property('success');",
+                  "    pm.expect(response).to.have.property('transaction_id');",
+                  "    pm.expect(response).to.have.property('status');",
+                  "});",
+                  "",
+                  "pm.test(\"Transaction has valid status\", function () {",
+                  "    const response = pm.response.json();",
+                  "    const validStatuses = ['approved', 'pending', 'declined', 'refunded', 'cancelled'];",
+                  "    pm.expect(validStatuses).to.include(response.status);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/transactions/{{TRANSACTION_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["transactions", "{{TRANSACTION_ID}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Balance",
+      "item": [
+        {
+          "name": "Get Balance",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Balance retrieved successfully\", function () {",
+                  "    const response = pm.response.json();",
+                  "    ",
+                  "    pm.expect(response).to.have.property('success');",
+                  "    pm.expect(response).to.have.property('balance');",
+                  "    pm.expect(response).to.have.property('available_balance');",
+                  "    pm.expect(response.success).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test(\"Balance values are valid\", function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.balance).to.be.a('number');",
+                  "    pm.expect(response.balance).to.be.at.least(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/balance",
+              "host": ["{{BASE_URL}}"],
+              "path": ["balance"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

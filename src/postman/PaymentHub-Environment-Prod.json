@@ -1,0 +1,55 @@
+{
+  "id": "payment-hub-prod",
+  "name": "PaymentHub - Production",
+  "values": [
+    {
+      "key": "BASE_URL",
+      "value": "https://api.payment-hub.com/v1",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "API_KEY",
+      "value": "your-production-api-key-here",
+      "type": "secret",
+      "enabled": true
+    },
+    {
+      "key": "TRANSACTION_ID",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "CUSTOMER_ID",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "CARD_TOKEN",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "SUBSCRIPTION_ID",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "WALLET_ID",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "YOUR_WEBHOOK_URL",
+      "value": "https://your-production-domain.com/webhooks/payment-hub",
+      "type": "default",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}

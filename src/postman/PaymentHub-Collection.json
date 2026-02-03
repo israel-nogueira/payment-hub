@@ -1,0 +1,1203 @@
+{
+  "info": {
+    "name": "PaymentHub - Complete API Collection",
+    "_postman_id": "payment-hub-collection-v1",
+    "description": "Complete collection for PaymentHub - Unified Payment Gateway Adapter\n\nAuthor: Israel Nogueira\nEmail: israel@feats.com.br\nGitHub: https://github.com/israel-nogueira/payment-hub",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "PIX",
+      "item": [
+        {
+          "name": "Create PIX Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100.00,\n  \"currency\": \"BRL\",\n  \"description\": \"Pagamento do pedido #123\",\n  \"customer_name\": \"João Silva\",\n  \"customer_document\": \"12345678900\",\n  \"customer_email\": \"joao@email.com\",\n  \"expires_in_minutes\": 30,\n  \"metadata\": {\n    \"order_id\": \"123\",\n    \"store_id\": \"loja-01\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/pix/payments",
+              "host": ["{{BASE_URL}}"],
+              "path": ["pix", "payments"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get PIX QR Code",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/pix/payments/{{TRANSACTION_ID}}/qrcode",
+              "host": ["{{BASE_URL}}"],
+              "path": ["pix", "payments", "{{TRANSACTION_ID}}", "qrcode"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get PIX Copy & Paste",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/pix/payments/{{TRANSACTION_ID}}/copy-paste",
+              "host": ["{{BASE_URL}}"],
+              "path": ["pix", "payments", "{{TRANSACTION_ID}}", "copy-paste"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Credit Card",
+      "item": [
+        {
+          "name": "Create Credit Card Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 250.00,\n  \"currency\": \"BRL\",\n  \"card_number\": \"4111111111111111\",\n  \"card_holder_name\": \"JOAO SILVA\",\n  \"card_expiry_month\": \"12\",\n  \"card_expiry_year\": \"2028\",\n  \"card_cvv\": \"123\",\n  \"installments\": 3,\n  \"capture\": true,\n  \"description\": \"Compra parcelada\",\n  \"customer_name\": \"João Silva\",\n  \"customer_document\": \"12345678900\",\n  \"customer_email\": \"joao@email.com\",\n  \"billing_address\": {\n    \"street\": \"Rua Exemplo\",\n    \"number\": \"123\",\n    \"complement\": \"Apto 45\",\n    \"neighborhood\": \"Centro\",\n    \"city\": \"São Paulo\",\n    \"state\": \"SP\",\n    \"zipcode\": \"01234567\",\n    \"country\": \"BR\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/credit-card/payments",
+              "host": ["{{BASE_URL}}"],
+              "path": ["credit-card", "payments"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Payment with Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 150.00,\n  \"currency\": \"BRL\",\n  \"card_token\": \"{{CARD_TOKEN}}\",\n  \"installments\": 1,\n  \"capture\": true,\n  \"description\": \"Pagamento com cartão tokenizado\",\n  \"customer_email\": \"joao@email.com\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/credit-card/payments",
+              "host": ["{{BASE_URL}}"],
+              "path": ["credit-card", "payments"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Tokenize Card",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"card_number\": \"4111111111111111\",\n  \"card_holder_name\": \"JOAO SILVA\",\n  \"card_expiry_month\": \"12\",\n  \"card_expiry_year\": \"2028\",\n  \"card_cvv\": \"123\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/credit-card/tokenize",
+              "host": ["{{BASE_URL}}"],
+              "path": ["credit-card", "tokenize"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Capture Pre-Authorization",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100.00\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/credit-card/payments/{{TRANSACTION_ID}}/capture",
+              "host": ["{{BASE_URL}}"],
+              "path": ["credit-card", "payments", "{{TRANSACTION_ID}}", "capture"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Pre-Authorization",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/credit-card/payments/{{TRANSACTION_ID}}/cancel",
+              "host": ["{{BASE_URL}}"],
+              "path": ["credit-card", "payments", "{{TRANSACTION_ID}}", "cancel"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Boleto",
+      "item": [
+        {
+          "name": "Create Boleto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500.00,\n  \"currency\": \"BRL\",\n  \"due_date\": \"2026-03-15\",\n  \"description\": \"Mensalidade março/2026\",\n  \"customer_name\": \"João Silva\",\n  \"customer_document\": \"12345678900\",\n  \"customer_email\": \"joao@email.com\",\n  \"customer_address\": {\n    \"street\": \"Rua Exemplo\",\n    \"number\": \"123\",\n    \"neighborhood\": \"Centro\",\n    \"city\": \"São Paulo\",\n    \"state\": \"SP\",\n    \"zipcode\": \"01234567\"\n  },\n  \"fine_percentage\": 2.0,\n  \"interest_percentage\": 1.0,\n  \"discount_amount\": 50.00,\n  \"discount_limit_date\": \"2026-03-10\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/boleto/payments",
+              "host": ["{{BASE_URL}}"],
+              "path": ["boleto", "payments"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Boleto URL",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/boleto/payments/{{TRANSACTION_ID}}/url",
+              "host": ["{{BASE_URL}}"],
+              "path": ["boleto", "payments", "{{TRANSACTION_ID}}", "url"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Boleto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/boleto/payments/{{TRANSACTION_ID}}/cancel",
+              "host": ["{{BASE_URL}}"],
+              "path": ["boleto", "payments", "{{TRANSACTION_ID}}", "cancel"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Subscriptions",
+      "item": [
+        {
+          "name": "Create Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 99.90,\n  \"currency\": \"BRL\",\n  \"interval\": \"monthly\",\n  \"customer_id\": \"{{CUSTOMER_ID}}\",\n  \"card_token\": \"{{CARD_TOKEN}}\",\n  \"description\": \"Plano Premium\",\n  \"trial_days\": 7,\n  \"cycles\": 12\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/subscriptions",
+              "host": ["{{BASE_URL}}"],
+              "path": ["subscriptions"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Subscription",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/subscriptions/{{SUBSCRIPTION_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["subscriptions", "{{SUBSCRIPTION_ID}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Suspend Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/subscriptions/{{SUBSCRIPTION_ID}}/suspend",
+              "host": ["{{BASE_URL}}"],
+              "path": ["subscriptions", "{{SUBSCRIPTION_ID}}", "suspend"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reactivate Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/subscriptions/{{SUBSCRIPTION_ID}}/reactivate",
+              "host": ["{{BASE_URL}}"],
+              "path": ["subscriptions", "{{SUBSCRIPTION_ID}}", "reactivate"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Refunds",
+      "item": [
+        {
+          "name": "Full Refund",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transaction_id\": \"{{TRANSACTION_ID}}\",\n  \"reason\": \"Cliente solicitou cancelamento\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/refunds",
+              "host": ["{{BASE_URL}}"],
+              "path": ["refunds"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Partial Refund",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transaction_id\": \"{{TRANSACTION_ID}}\",\n  \"amount\": 50.00,\n  \"reason\": \"Estorno parcial por item devolvido\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/refunds",
+              "host": ["{{BASE_URL}}"],
+              "path": ["refunds"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "Get Transaction Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/transactions/{{TRANSACTION_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["transactions", "{{TRANSACTION_ID}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/transactions?start_date=2026-01-01&end_date=2026-01-31&status=approved&limit=50",
+              "host": ["{{BASE_URL}}"],
+              "path": ["transactions"],
+              "query": [
+                {
+                  "key": "start_date",
+                  "value": "2026-01-01"
+                },
+                {
+                  "key": "end_date",
+                  "value": "2026-01-31"
+                },
+                {
+                  "key": "status",
+                  "value": "approved"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Split Payment",
+      "item": [
+        {
+          "name": "Create Split Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000.00,\n  \"currency\": \"BRL\",\n  \"payment_method\": \"credit_card\",\n  \"splits\": [\n    {\n      \"recipient_id\": \"seller_1\",\n      \"amount\": 700.00,\n      \"charge_processing_fee\": true\n    },\n    {\n      \"recipient_id\": \"marketplace\",\n      \"amount\": 300.00,\n      \"charge_processing_fee\": false\n    }\n  ],\n  \"description\": \"Venda no marketplace\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/split-payments",
+              "host": ["{{BASE_URL}}"],
+              "path": ["split-payments"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Sub-Accounts",
+      "item": [
+        {
+          "name": "Create Sub-Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Loja do João\",\n  \"document_number\": \"12345678000199\",\n  \"email\": \"loja@joao.com\",\n  \"phone\": \"11987654321\",\n  \"business_name\": \"João Silva LTDA\",\n  \"business_type\": \"individual\",\n  \"address\": {\n    \"street\": \"Rua Exemplo\",\n    \"number\": \"123\",\n    \"city\": \"São Paulo\",\n    \"state\": \"SP\",\n    \"zipcode\": \"01234567\"\n  },\n  \"bank_account\": {\n    \"bank_code\": \"001\",\n    \"agency_number\": \"1234\",\n    \"account_number\": \"12345-6\",\n    \"account_type\": \"checking\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/sub-accounts",
+              "host": ["{{BASE_URL}}"],
+              "path": ["sub-accounts"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Sub-Account",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/sub-accounts/{{SUB_ACCOUNT_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["sub-accounts", "{{SUB_ACCOUNT_ID}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Activate Sub-Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/sub-accounts/{{SUB_ACCOUNT_ID}}/activate",
+              "host": ["{{BASE_URL}}"],
+              "path": ["sub-accounts", "{{SUB_ACCOUNT_ID}}", "activate"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate Sub-Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/sub-accounts/{{SUB_ACCOUNT_ID}}/deactivate",
+              "host": ["{{BASE_URL}}"],
+              "path": ["sub-accounts", "{{SUB_ACCOUNT_ID}}", "deactivate"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Wallets",
+      "item": [
+        {
+          "name": "Create Wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": \"{{CUSTOMER_ID}}\",\n  \"currency\": \"BRL\",\n  \"description\": \"Carteira do João\",\n  \"initial_balance\": 100.00\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/wallets",
+              "host": ["{{BASE_URL}}"],
+              "path": ["wallets"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Balance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 50.00\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/wallets/{{WALLET_ID}}/add-balance",
+              "host": ["{{BASE_URL}}"],
+              "path": ["wallets", "{{WALLET_ID}}", "add-balance"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Deduct Balance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 25.00\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/wallets/{{WALLET_ID}}/deduct-balance",
+              "host": ["{{BASE_URL}}"],
+              "path": ["wallets", "{{WALLET_ID}}", "deduct-balance"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Wallet Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/wallets/{{WALLET_ID}}/balance",
+              "host": ["{{BASE_URL}}"],
+              "path": ["wallets", "{{WALLET_ID}}", "balance"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Transfer Between Wallets",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from_wallet_id\": \"{{WALLET_ID}}\",\n  \"to_wallet_id\": \"wallet_2\",\n  \"amount\": 25.00\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/wallets/transfer",
+              "host": ["{{BASE_URL}}"],
+              "path": ["wallets", "transfer"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Escrow",
+      "item": [
+        {
+          "name": "Hold in Escrow",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 1000.00,\n  \"currency\": \"BRL\",\n  \"transaction_id\": \"{{TRANSACTION_ID}}\",\n  \"recipient_id\": \"seller_1\",\n  \"hold_days\": 7,\n  \"description\": \"Aguardando confirmação de entrega\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/escrow",
+              "host": ["{{BASE_URL}}"],
+              "path": ["escrow"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Release Escrow",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/escrow/{{ESCROW_ID}}/release",
+              "host": ["{{BASE_URL}}"],
+              "path": ["escrow", "{{ESCROW_ID}}", "release"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Partial Release Escrow",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500.00\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/escrow/{{ESCROW_ID}}/partial-release",
+              "host": ["{{BASE_URL}}"],
+              "path": ["escrow", "{{ESCROW_ID}}", "partial-release"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Escrow",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/escrow/{{ESCROW_ID}}/cancel",
+              "host": ["{{BASE_URL}}"],
+              "path": ["escrow", "{{ESCROW_ID}}", "cancel"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Payment Links",
+      "item": [
+        {
+          "name": "Create Payment Link",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 150.00,\n  \"currency\": \"BRL\",\n  \"description\": \"Pagamento do Curso\",\n  \"accepted_payment_methods\": [\"pix\", \"credit_card\", \"boleto\"],\n  \"max_uses\": 1,\n  \"expires_at\": \"2026-12-31 23:59:59\",\n  \"reusable\": false,\n  \"redirect_url\": \"https://meusite.com/obrigado\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/payment-links",
+              "host": ["{{BASE_URL}}"],
+              "path": ["payment-links"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Payment Link",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/payment-links/{{LINK_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["payment-links", "{{LINK_ID}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Expire Payment Link",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/payment-links/{{LINK_ID}}/expire",
+              "host": ["{{BASE_URL}}"],
+              "path": ["payment-links", "{{LINK_ID}}", "expire"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Customers",
+      "item": [
+        {
+          "name": "Create Customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"João Silva\",\n  \"email\": \"joao@email.com\",\n  \"document_number\": \"12345678900\",\n  \"phone\": \"11987654321\",\n  \"birth_date\": \"1990-05-15\",\n  \"address\": {\n    \"street\": \"Rua Exemplo\",\n    \"number\": \"123\",\n    \"city\": \"São Paulo\",\n    \"state\": \"SP\",\n    \"zipcode\": \"01234567\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/customers",
+              "host": ["{{BASE_URL}}"],
+              "path": ["customers"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Customer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/customers/{{CUSTOMER_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["customers", "{{CUSTOMER_ID}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Customer",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"11999887766\",\n  \"email\": \"joao.novo@email.com\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/customers/{{CUSTOMER_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["customers", "{{CUSTOMER_ID}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Customers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/customers?limit=50&offset=0",
+              "host": ["{{BASE_URL}}"],
+              "path": ["customers"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "Register Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"https://meusite.com/webhooks/payment-hub\",\n  \"events\": [\n    \"payment.approved\",\n    \"payment.declined\",\n    \"payment.refunded\",\n    \"subscription.created\",\n    \"subscription.cancelled\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/webhooks",
+              "host": ["{{BASE_URL}}"],
+              "path": ["webhooks"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Webhooks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/webhooks",
+              "host": ["{{BASE_URL}}"],
+              "path": ["webhooks"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Webhook",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/webhooks/{{WEBHOOK_ID}}",
+              "host": ["{{BASE_URL}}"],
+              "path": ["webhooks", "{{WEBHOOK_ID}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Balance",
+      "item": [
+        {
+          "name": "Get Balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{API_KEY}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/balance",
+              "host": ["{{BASE_URL}}"],
+              "path": ["balance"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Webhook Samples (Incoming)",
+      "item": [
+        {
+          "name": "Payment Approved Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Webhook-Signature",
+                "value": "sha256=abc123..."
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"payment.approved\",\n  \"timestamp\": \"2026-02-03T10:30:00Z\",\n  \"data\": {\n    \"transaction_id\": \"txn_abc123\",\n    \"amount\": 100.00,\n    \"currency\": \"BRL\",\n    \"status\": \"approved\",\n    \"payment_method\": \"pix\",\n    \"customer\": {\n      \"id\": \"cust_123\",\n      \"name\": \"João Silva\",\n      \"email\": \"joao@email.com\"\n    },\n    \"metadata\": {\n      \"order_id\": \"order_456\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{YOUR_WEBHOOK_URL}}",
+              "host": ["{{YOUR_WEBHOOK_URL}}"]
+            },
+            "description": "Exemplo de webhook recebido quando um pagamento é aprovado"
+          },
+          "response": []
+        },
+        {
+          "name": "Payment Declined Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Webhook-Signature",
+                "value": "sha256=xyz789..."
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"payment.declined\",\n  \"timestamp\": \"2026-02-03T10:35:00Z\",\n  \"data\": {\n    \"transaction_id\": \"txn_def456\",\n    \"amount\": 250.00,\n    \"currency\": \"BRL\",\n    \"status\": \"declined\",\n    \"payment_method\": \"credit_card\",\n    \"decline_reason\": \"insufficient_funds\",\n    \"customer\": {\n      \"id\": \"cust_789\",\n      \"name\": \"Maria Santos\",\n      \"email\": \"maria@email.com\"\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{YOUR_WEBHOOK_URL}}",
+              "host": ["{{YOUR_WEBHOOK_URL}}"]
+            },
+            "description": "Exemplo de webhook recebido quando um pagamento é recusado"
+          },
+          "response": []
+        },
+        {
+          "name": "Refund Processed Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Webhook-Signature",
+                "value": "sha256=ref123..."
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"payment.refunded\",\n  \"timestamp\": \"2026-02-03T11:00:00Z\",\n  \"data\": {\n    \"refund_id\": \"ref_abc123\",\n    \"transaction_id\": \"txn_original123\",\n    \"amount\": 100.00,\n    \"currency\": \"BRL\",\n    \"status\": \"refunded\",\n    \"reason\": \"Cliente solicitou\",\n    \"refund_type\": \"full\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{YOUR_WEBHOOK_URL}}",
+              "host": ["{{YOUR_WEBHOOK_URL}}"]
+            },
+            "description": "Exemplo de webhook recebido quando um estorno é processado"
+          },
+          "response": []
+        },
+        {
+          "name": "Subscription Created Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Webhook-Signature",
+                "value": "sha256=sub123..."
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"subscription.created\",\n  \"timestamp\": \"2026-02-03T12:00:00Z\",\n  \"data\": {\n    \"subscription_id\": \"sub_premium_123\",\n    \"customer_id\": \"cust_456\",\n    \"amount\": 99.90,\n    \"currency\": \"BRL\",\n    \"interval\": \"monthly\",\n    \"status\": \"active\",\n    \"trial_days\": 7,\n    \"next_billing_date\": \"2026-03-03\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{YOUR_WEBHOOK_URL}}",
+              "host": ["{{YOUR_WEBHOOK_URL}}"]
+            },
+            "description": "Exemplo de webhook recebido quando uma assinatura é criada"
+          },
+          "response": []
+        },
+        {
+          "name": "Chargeback Received Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Webhook-Signature",
+                "value": "sha256=cb123..."
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event\": \"chargeback.received\",\n  \"timestamp\": \"2026-02-03T13:30:00Z\",\n  \"data\": {\n    \"chargeback_id\": \"cb_dispute_789\",\n    \"transaction_id\": \"txn_original456\",\n    \"amount\": 500.00,\n    \"currency\": \"BRL\",\n    \"reason\": \"fraud\",\n    \"status\": \"under_review\",\n    \"dispute_deadline\": \"2026-02-17\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{YOUR_WEBHOOK_URL}}",
+              "host": ["{{YOUR_WEBHOOK_URL}}"]
+            },
+            "description": "Exemplo de webhook recebido quando um chargeback é aberto"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
