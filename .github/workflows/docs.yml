@@ -1,0 +1,58 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'docs/**'
+      - '.github/workflows/docs.yml'  # Rebuilda se o workflow mudar
+  workflow_dispatch:  # Permite execução manual
+
+# Princípio do menor privilégio
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Previne execuções concorrentes
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  generate-docs:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+        tools: phpDocumentor
+        coverage: none  # Não precisa de coverage para docs
+    
+    - name: Validate PHP version
+      run: php -v
+    
+    - name: Generate API Documentation
+      run: |
+        mkdir -p docs/api
+        phpdoc -d src -t docs/api --title="Payment Hub API Documentation"
+    
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+    
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./docs
+    
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
