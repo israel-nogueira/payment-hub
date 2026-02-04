@@ -38,6 +38,9 @@ jobs:
     - name: Validate PHP version
       run: php -v
     
+    - name: Install Composer dependencies
+      run: composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+    
     - name: Generate API Documentation
       run: |
         mkdir -p docs/api
