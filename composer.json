@@ -42,19 +42,29 @@
             "IsraelNogueira\\PaymentHub\\Tests\\": "tests/"
         }
     },
-    "scripts": {
-        "test": "phpunit",
-        "test:coverage": "phpunit --coverage-html coverage --coverage-text",
-        "analyse": "phpstan analyse src --level=8",
-        "cs": "phpcs src --standard=PSR12",
-        "cs:fix": "phpcbf src --standard=PSR12",
-        "fix": "php-cs-fixer fix src",
-        "check": [
-            "@analyse",
-            "@cs",
-            "@test"
-        ]
-    },
+	"scripts": {
+		"test": "phpunit --testdox",
+		"test:coverage": [
+			"@putenv XDEBUG_MODE=coverage",
+			"phpunit --coverage-html coverage/html --coverage-clover coverage/clover.xml --coverage-text"
+		],
+		"test:unit": "phpunit --testsuite Unit --testdox",
+		"test:integration": "phpunit --testsuite Integration --testdox",
+		"analyse": "phpstan analyse src --level=8 --memory-limit=512M",
+		"cs": "phpcs src tests --standard=PSR12 --colors",
+		"cs:fix": "phpcbf src tests --standard=PSR12",
+		"fix": "php-cs-fixer fix src",
+		"check": [
+			"@analyse",
+			"@cs",
+			"@test"
+		],
+		"check:full": [
+			"@analyse",
+			"@cs",
+			"@test:coverage"
+		]
+	},
     "config": {
         "optimize-autoloader": true,
         "preferred-install": "dist",

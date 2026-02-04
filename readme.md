@@ -676,4 +676,5 @@ Se este projeto te ajudou, deixe uma ⭐ no repositório!
 
 **Feito com ❤️ para a comunidade PHP brasileira**
 
-*Type-safe, validado e pronto para produção!* 🚀
+*Type-safe, validado e pronto para produção!* 🚀t e s t  
+ 

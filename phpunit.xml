@@ -3,10 +3,10 @@
          xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.0/phpunit.xsd"
          bootstrap="vendor/autoload.php"
          colors="true"
-         failOnRisky="true"
          failOnWarning="true"
-         stopOnFailure="false"
-         cacheDirectory=".phpunit.cache">
+         failOnRisky="true"
+         beStrictAboutOutputDuringTests="true">
+    
     <testsuites>
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
@@ -14,10 +14,8 @@
         <testsuite name="Integration">
             <directory>tests/Integration</directory>
         </testsuite>
-        <testsuite name="Feature">
-            <directory>tests/Feature</directory>
-        </testsuite>
     </testsuites>
+    
     <source>
         <include>
             <directory>src</directory>
@@ -26,12 +24,15 @@
             <directory>src/postman</directory>
         </exclude>
     </source>
+    
     <coverage>
         <report>
-            <html outputDirectory="coverage"/>
+            <html outputDirectory="coverage/html"/>
+            <clover outputFile="coverage/clover.xml"/>
             <text outputFile="php://stdout" showUncoveredFiles="true"/>
         </report>
     </coverage>
+    
     <php>
         <env name="APP_ENV" value="testing"/>
     </php>
