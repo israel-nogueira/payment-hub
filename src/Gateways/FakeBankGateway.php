@@ -27,55 +27,84 @@ use IsraelNogueira\PaymentHub\DataObjects\Responses\EscrowResponse;
 use IsraelNogueira\PaymentHub\DataObjects\Responses\PaymentLinkResponse;
 use IsraelNogueira\PaymentHub\DataObjects\Responses\CustomerResponse;
 use IsraelNogueira\PaymentHub\DataObjects\Responses\BalanceResponse;
+
 class FakeBankGateway implements PaymentGatewayInterface
 {
-    private array $transactions = [];
+    private FakeBankStorage $storage;
     private float $balance = 10000.00;
 
+    public function __construct(?string $storagePath = null)
+    {
+        $this->storage = new FakeBankStorage($storagePath);
+    }
+
+    // ==================== PIX ====================
+    
     public function createPixPayment(PixPaymentRequest $request): PaymentResponse
     {
         $transactionId = 'FAKE_PIX_' . uniqid();
         
-        $this->transactions[$transactionId] = [
+        $data = [
             'type' => 'pix',
             'status' => 'approved',
-            'amount' => $request->money->amount(),
+            'amount' => $request->getAmount(),
+            'currency' => $request->getCurrency(),
+            'customer_name' => $request->customerName,
+            'customer_document' => $request->getCustomerDocument(),
+            'customer_email' => $request->getCustomerEmail(),
+            'description' => $request->description,
             'qr_code' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
             'qr_code_text' => '00020126330014BR.GOV.BCB.PIX0111' . $transactionId,
         ];
+        
+        $this->storage->save('transactions', $transactionId, $data);
 
         return PaymentResponse::create(
             success: true,
             transactionId: $transactionId,
             status: 'approved',
-            amount: $request->money->amount(),
-            currency: $request->money->currency()->value,
+            amount: $request->getAmount(),
+            currency: $request->getCurrency(),
             message: 'PIX payment created successfully',
-            rawResponse: $this->transactions[$transactionId],
+            rawResponse: $data,
             metadata: $request->metadata
         );
     }
 
     public function getPixQrCode(string $transactionId): string
     {
-        return $this->transactions[$transactionId]['qr_code'] ?? '';
+        $transaction = $this->storage->get('transactions', $transactionId);
+        return $transaction['qr_code'] ?? '';
     }
 
     public function getPixCopyPaste(string $transactionId): string
     {
-        return $this->transactions[$transactionId]['qr_code_text'] ?? '';
+        $transaction = $this->storage->get('transactions', $transactionId);
+        return $transaction['qr_code_text'] ?? '';
     }
 
+    // ==================== CARTÃO DE CRÉDITO ====================
+    
     public function createCreditCardPayment(CreditCardPaymentRequest $request): PaymentResponse
     {
         $transactionId = 'FAKE_CC_' . uniqid();
         
-        $this->transactions[$transactionId] = [
+        // Detectar número do cartão (pode ser CardNumber object ou string)
+        $cardNumber = $request->cardNumber?->value() ?? $request->cardNumber;
+        
+        $data = [
             'type' => 'credit_card',
             'status' => 'approved',
             'amount' => $request->money->amount(),
+            'currency' => $request->money->currency()->value,
             'installments' => $request->installments,
+            'card_last4' => substr($cardNumber, -4),
+            'card_brand' => $this->detectCardBrand($cardNumber),
+            'customer_email' => $request->customerEmail?->value() ?? $request->customerEmail,
+            'description' => $request->description,
         ];
+        
+        $this->storage->save('transactions', $transactionId, $data);
 
         return PaymentResponse::create(
             success: true,
@@ -84,18 +113,40 @@ class FakeBankGateway implements PaymentGatewayInterface
             amount: $request->money->amount(),
             currency: $request->money->currency()->value,
             message: 'Credit card payment approved',
-            rawResponse: $this->transactions[$transactionId],
-            metadata: $request->metadata ?? null
+            rawResponse: $data,
+            metadata: $request->metadata
         );
     }
 
     public function tokenizeCard(array $cardData): string
     {
-        return 'FAKE_TOKEN_' . uniqid();
+        $token = 'FAKE_TOKEN_' . uniqid();
+        
+        $tokenData = [
+            'card_number_last4' => substr($cardData['number'] ?? '', -4),
+            'card_brand' => $this->detectCardBrand($cardData['number'] ?? ''),
+            'card_holder_name' => $cardData['holder_name'] ?? '',
+            'card_expiry_month' => $cardData['expiry_month'] ?? '',
+            'card_expiry_year' => $cardData['expiry_year'] ?? '',
+            'is_active' => true,
+        ];
+        
+        $this->storage->save('tokens', $token, $tokenData);
+        
+        return $token;
     }
 
     public function capturePreAuthorization(string $transactionId, ?float $amount = null): PaymentResponse
     {
+        $transaction = $this->storage->get('transactions', $transactionId);
+        
+        if ($transaction) {
+            $this->storage->update('transactions', $transactionId, [
+                'status' => 'captured',
+                'captured_amount' => $amount ?? $transaction['amount']
+            ]);
+        }
+        
         return PaymentResponse::create(
             success: true,
             transactionId: $transactionId,
@@ -109,6 +160,14 @@ class FakeBankGateway implements PaymentGatewayInterface
 
     public function cancelPreAuthorization(string $transactionId): PaymentResponse
     {
+        $transaction = $this->storage->get('transactions', $transactionId);
+        
+        if ($transaction) {
+            $this->storage->update('transactions', $transactionId, [
+                'status' => 'cancelled'
+            ]);
+        }
+        
         return PaymentResponse::create(
             success: true,
             transactionId: $transactionId,
@@ -120,32 +179,53 @@ class FakeBankGateway implements PaymentGatewayInterface
         );
     }
 
+    // ==================== CARTÃO DE DÉBITO ====================
+    
     public function createDebitCardPayment(DebitCardPaymentRequest $request): PaymentResponse
     {
         $transactionId = 'FAKE_DC_' . uniqid();
+        
+        $data = [
+            'type' => 'debit_card',
+            'status' => 'approved',
+            'amount' => $request->amount,
+            'currency' => $request->currency,
+            'card_last4' => substr($request->cardNumber, -4),
+            'card_brand' => $this->detectCardBrand($request->cardNumber),
+        ];
+        
+        $this->storage->save('transactions', $transactionId, $data);
         
         return PaymentResponse::create(
             success: true,
             transactionId: $transactionId,
             status: 'approved',
-            amount: $request->money->amount(),
-            currency: $request->money->currency()->value,
+            amount: $request->amount,
+            currency: $request->currency,
             message: 'Debit card payment approved',
-            rawResponse: ['type' => 'debit_card']
+            rawResponse: $data
         );
     }
 
+    // ==================== BOLETO ====================
+    
     public function createBoleto(BoletoPaymentRequest $request): PaymentResponse
     {
         $transactionId = 'FAKE_BOLETO_' . uniqid();
         
-        $this->transactions[$transactionId] = [
+        $data = [
             'type' => 'boleto',
             'status' => 'pending',
             'amount' => $request->money->amount(),
+            'currency' => $request->money->currency()->value,
+            'due_date' => $request->dueDate,
+            'customer_name' => $request->customerName,
+            'customer_document' => $request->customerDocument?->value(),
             'barcode' => '34191.79001 01043.510047 91020.150008 1 84460000002000',
             'url' => 'https://fakebank.com/boleto/' . $transactionId,
         ];
+        
+        $this->storage->save('transactions', $transactionId, $data);
 
         return PaymentResponse::create(
             success: true,
@@ -154,17 +234,26 @@ class FakeBankGateway implements PaymentGatewayInterface
             amount: $request->money->amount(),
             currency: $request->money->currency()->value,
             message: 'Boleto created successfully',
-            rawResponse: $this->transactions[$transactionId]
+            rawResponse: $data
         );
     }
 
     public function getBoletoUrl(string $transactionId): string
     {
-        return $this->transactions[$transactionId]['url'] ?? '';
+        $transaction = $this->storage->get('transactions', $transactionId);
+        return $transaction['url'] ?? '';
     }
 
     public function cancelBoleto(string $transactionId): PaymentResponse
     {
+        $transaction = $this->storage->get('transactions', $transactionId);
+        
+        if ($transaction) {
+            $this->storage->update('transactions', $transactionId, [
+                'status' => 'cancelled'
+            ]);
+        }
+        
         return PaymentResponse::create(
             success: true,
             transactionId: $transactionId,
@@ -176,52 +265,96 @@ class FakeBankGateway implements PaymentGatewayInterface
         );
     }
 
+    // ==================== ASSINATURAS/RECORRÊNCIA ====================
+    
     public function createSubscription(SubscriptionRequest $request): SubscriptionResponse
     {
+        $subscriptionId = 'FAKE_SUB_' . uniqid();
+        
+        $data = [
+            'amount' => $request->getAmount(),
+            'currency' => $request->getCurrency(),
+            'interval' => $request->getInterval(),
+            'customer_id' => $request->customerId,
+            'card_token' => $request->cardToken,
+            'status' => 'active',
+            'description' => $request->description,
+            'trial_days' => $request->trialDays,
+            'cycles' => $request->cycles,
+        ];
+        
+        $this->storage->save('subscriptions', $subscriptionId, $data);
+        
         return new SubscriptionResponse(
             success: true,
-            subscriptionId: 'FAKE_SUB_' . uniqid(),
+            subscriptionId: $subscriptionId,
             status: 'active',
             message: 'Subscription created',
-            rawResponse: []
+            rawResponse: $data
         );
     }
 
     public function cancelSubscription(string $subscriptionId): SubscriptionResponse
     {
+        $subscription = $this->storage->get('subscriptions', $subscriptionId);
+        
+        if ($subscription) {
+            $this->storage->update('subscriptions', $subscriptionId, [
+                'status' => 'cancelled'
+            ]);
+        }
+        
         return new SubscriptionResponse(
             success: true,
             subscriptionId: $subscriptionId,
             status: 'cancelled',
             message: 'Subscription cancelled',
-            rawResponse: []
+            rawResponse: $subscription ?? []
         );
     }
 
     public function suspendSubscription(string $subscriptionId): SubscriptionResponse
     {
+        $subscription = $this->storage->get('subscriptions', $subscriptionId);
+        
+        if ($subscription) {
+            $this->storage->update('subscriptions', $subscriptionId, [
+                'status' => 'suspended'
+            ]);
+        }
+        
         return new SubscriptionResponse(
             success: true,
             subscriptionId: $subscriptionId,
             status: 'suspended',
             message: 'Subscription suspended',
-            rawResponse: []
+            rawResponse: $subscription ?? []
         );
     }
 
     public function reactivateSubscription(string $subscriptionId): SubscriptionResponse
     {
+        $subscription = $this->storage->get('subscriptions', $subscriptionId);
+        
+        if ($subscription) {
+            $this->storage->update('subscriptions', $subscriptionId, [
+                'status' => 'active'
+            ]);
+        }
+        
         return new SubscriptionResponse(
             success: true,
             subscriptionId: $subscriptionId,
             status: 'active',
             message: 'Subscription reactivated',
-            rawResponse: []
+            rawResponse: $subscription ?? []
         );
     }
 
     public function updateSubscription(string $subscriptionId, array $data): SubscriptionResponse
     {
+        $this->storage->update('subscriptions', $subscriptionId, $data);
+        
         return new SubscriptionResponse(
             success: true,
             subscriptionId: $subscriptionId,
@@ -231,51 +364,74 @@ class FakeBankGateway implements PaymentGatewayInterface
         );
     }
 
+    // ==================== TRANSAÇÕES ====================
+    
     public function getTransactionStatus(string $transactionId): TransactionStatusResponse
     {
-        $transaction = $this->transactions[$transactionId] ?? null;
+        $transaction = $this->storage->get('transactions', $transactionId);
         
         return new TransactionStatusResponse(
-            success: true,
+            success: $transaction !== null,
             transactionId: $transactionId,
             status: $transaction['status'] ?? 'not_found',
             amount: $transaction['amount'] ?? null,
-            currency: 'BRL',
+            currency: $transaction['currency'] ?? 'BRL',
             rawResponse: $transaction
         );
     }
 
     public function listTransactions(array $filters = []): array
     {
-        return array_map(fn($id, $data) => array_merge(['id' => $id], $data), 
-            array_keys($this->transactions), 
-            $this->transactions
-        );
+        return $this->storage->find('transactions', $filters);
     }
 
+    // ==================== ESTORNOS E CHARGEBACKS ====================
+    
     public function refund(RefundRequest $request): RefundResponse
     {
+        $refundId = 'FAKE_REFUND_' . uniqid();
+        
+        $data = [
+            'transaction_id' => $request->transactionId,
+            'amount' => $request->amount,
+            'reason' => $request->reason ?? null,
+            'status' => 'refunded',
+        ];
+        
+        $this->storage->save('refunds', $refundId, $data);
+        
         return new RefundResponse(
             success: true,
-            refundId: 'FAKE_REFUND_' . uniqid(),
+            refundId: $refundId,
             transactionId: $request->transactionId,
-            amount: $request->money->amount(),
+            amount: $request->amount,
             status: 'refunded',
             message: 'Refund processed',
-            rawResponse: []
+            rawResponse: $data
         );
     }
 
     public function partialRefund(string $transactionId, float $amount): RefundResponse
     {
+        $refundId = 'FAKE_REFUND_' . uniqid();
+        
+        $data = [
+            'transaction_id' => $transactionId,
+            'amount' => $amount,
+            'status' => 'refunded',
+            'type' => 'partial',
+        ];
+        
+        $this->storage->save('refunds', $refundId, $data);
+        
         return new RefundResponse(
             success: true,
-            refundId: 'FAKE_REFUND_' . uniqid(),
+            refundId: $refundId,
             transactionId: $transactionId,
             amount: $amount,
             status: 'refunded',
             message: 'Partial refund processed',
-            rawResponse: []
+            rawResponse: $data
         );
     }
 
@@ -289,7 +445,7 @@ class FakeBankGateway implements PaymentGatewayInterface
         return PaymentResponse::create(
             success: true,
             transactionId: $chargebackId,
-            status: 'pending',
+            status: 'under_review',
             amount: null,
             currency: 'BRL',
             message: 'Chargeback dispute submitted',
@@ -297,32 +453,60 @@ class FakeBankGateway implements PaymentGatewayInterface
         );
     }
 
+    // ==================== SPLIT DE PAGAMENTO ====================
+    
     public function createSplitPayment(SplitPaymentRequest $request): PaymentResponse
     {
+        $transactionId = 'FAKE_SPLIT_' . uniqid();
+        
+        $data = [
+            'type' => 'split_payment',
+            'status' => 'approved',
+            'amount' => $request->amount,
+            'splits' => $request->splits ?? [],
+        ];
+        
+        $this->storage->save('transactions', $transactionId, $data);
+        
         return PaymentResponse::create(
             success: true,
-            transactionId: 'FAKE_SPLIT_' . uniqid(),
+            transactionId: $transactionId,
             status: 'approved',
-            amount: $request->money->amount(),
+            amount: $request->amount,
             currency: 'BRL',
             message: 'Split payment created',
-            rawResponse: []
+            rawResponse: $data
         );
     }
 
+    // ==================== SUB-CONTAS ====================
+    
     public function createSubAccount(SubAccountRequest $request): SubAccountResponse
     {
+        $subAccountId = 'FAKE_SUB_ACC_' . uniqid();
+        
+        $data = [
+            'name' => $request->name,
+            'email' => $request->email,
+            'document_number' => $request->documentNumber,
+            'status' => 'active',
+        ];
+        
+        $this->storage->save('sub_accounts', $subAccountId, $data);
+        
         return new SubAccountResponse(
             success: true,
-            subAccountId: 'FAKE_SUB_ACC_' . uniqid(),
+            subAccountId: $subAccountId,
             status: 'active',
             message: 'Sub-account created',
-            rawResponse: []
+            rawResponse: $data
         );
     }
 
     public function updateSubAccount(string $subAccountId, array $data): SubAccountResponse
     {
+        $this->storage->update('sub_accounts', $subAccountId, $data);
+        
         return new SubAccountResponse(
             success: true,
             subAccountId: $subAccountId,
@@ -334,17 +518,21 @@ class FakeBankGateway implements PaymentGatewayInterface
 
     public function getSubAccount(string $subAccountId): SubAccountResponse
     {
+        $subAccount = $this->storage->get('sub_accounts', $subAccountId);
+        
         return new SubAccountResponse(
-            success: true,
+            success: $subAccount !== null,
             subAccountId: $subAccountId,
-            status: 'active',
+            status: $subAccount['status'] ?? 'not_found',
             message: 'Sub-account retrieved',
-            rawResponse: []
+            rawResponse: $subAccount ?? []
         );
     }
 
     public function activateSubAccount(string $subAccountId): SubAccountResponse
     {
+        $this->storage->update('sub_accounts', $subAccountId, ['status' => 'active']);
+        
         return new SubAccountResponse(
             success: true,
             subAccountId: $subAccountId,
@@ -356,6 +544,8 @@ class FakeBankGateway implements PaymentGatewayInterface
 
     public function deactivateSubAccount(string $subAccountId): SubAccountResponse
     {
+        $this->storage->update('sub_accounts', $subAccountId, ['status' => 'inactive']);
+        
         return new SubAccountResponse(
             success: true,
             subAccountId: $subAccountId,
@@ -365,92 +555,180 @@ class FakeBankGateway implements PaymentGatewayInterface
         );
     }
 
+    // ==================== WALLETS ====================
+    
     public function createWallet(WalletRequest $request): WalletResponse
     {
+        $walletId = 'FAKE_WALLET_' . uniqid();
+        
+        $data = [
+            'customer_id' => $request->customerId ?? null,
+            'balance' => 0.0,
+            'currency' => $request->currency ?? 'BRL',
+        ];
+        
+        $this->storage->save('wallets', $walletId, $data);
+        
         return new WalletResponse(
             success: true,
-            walletId: 'FAKE_WALLET_' . uniqid(),
+            walletId: $walletId,
             balance: 0.0,
-            currency: 'BRL',
+            currency: $request->currency ?? 'BRL',
             message: 'Wallet created',
-            rawResponse: []
+            rawResponse: $data
         );
     }
 
     public function addBalance(string $walletId, float $amount): WalletResponse
     {
+        $wallet = $this->storage->get('wallets', $walletId);
+        
+        if ($wallet) {
+            $newBalance = ($wallet['balance'] ?? 0) + $amount;
+            $this->storage->update('wallets', $walletId, ['balance' => $newBalance]);
+            
+            return new WalletResponse(
+                success: true,
+                walletId: $walletId,
+                balance: $newBalance,
+                currency: $wallet['currency'] ?? 'BRL',
+                message: 'Balance added',
+                rawResponse: []
+            );
+        }
+        
         return new WalletResponse(
-            success: true,
+            success: false,
             walletId: $walletId,
-            balance: $amount,
+            balance: 0,
             currency: 'BRL',
-            message: 'Balance added',
+            message: 'Wallet not found',
             rawResponse: []
         );
     }
 
     public function deductBalance(string $walletId, float $amount): WalletResponse
     {
+        $wallet = $this->storage->get('wallets', $walletId);
+        
+        if ($wallet) {
+            $newBalance = ($wallet['balance'] ?? 0) - $amount;
+            $this->storage->update('wallets', $walletId, ['balance' => $newBalance]);
+            
+            return new WalletResponse(
+                success: true,
+                walletId: $walletId,
+                balance: $newBalance,
+                currency: $wallet['currency'] ?? 'BRL',
+                message: 'Balance deducted',
+                rawResponse: []
+            );
+        }
+        
         return new WalletResponse(
-            success: true,
+            success: false,
             walletId: $walletId,
-            balance: -$amount,
+            balance: 0,
             currency: 'BRL',
-            message: 'Balance deducted',
+            message: 'Wallet not found',
             rawResponse: []
         );
     }
 
     public function getWalletBalance(string $walletId): BalanceResponse
     {
+        $wallet = $this->storage->get('wallets', $walletId);
+        
         return new BalanceResponse(
-            success: true,
-            balance: $this->balance,
-            availableBalance: $this->balance,
+            success: $wallet !== null,
+            balance: $wallet['balance'] ?? 0,
+            availableBalance: $wallet['balance'] ?? 0,
             pendingBalance: 0.0,
-            currency: 'BRL',
-            rawResponse: []
+            currency: $wallet['currency'] ?? 'BRL',
+            rawResponse: $wallet ?? []
         );
     }
 
     public function transferBetweenWallets(string $fromWalletId, string $toWalletId, float $amount): TransferResponse
     {
+        $transferId = 'FAKE_TRANSFER_' . uniqid();
+        
+        $this->deductBalance($fromWalletId, $amount);
+        $this->addBalance($toWalletId, $amount);
+        
+        $data = [
+            'from_wallet_id' => $fromWalletId,
+            'to_wallet_id' => $toWalletId,
+            'amount' => $amount,
+            'status' => 'completed',
+        ];
+        
+        $this->storage->save('transfers', $transferId, $data);
+        
         return new TransferResponse(
             success: true,
-            transferId: 'FAKE_TRANSFER_' . uniqid(),
-            amount: $amount,
-            status: 'completed',
+            transferId: $transferId,
+            money: \IsraelNogueira\PaymentHub\ValueObjects\Money::from($amount, \IsraelNogueira\PaymentHub\Enums\Currency::BRL),
+            status: \IsraelNogueira\PaymentHub\Enums\PaymentStatus::fromString('completed'),
             message: 'Transfer completed',
-            rawResponse: []
+            rawResponse: $data
         );
     }
 
+    // ==================== ESCROW (CUSTÓDIA) ====================
+    
     public function holdInEscrow(EscrowRequest $request): EscrowResponse
     {
+        $escrowId = 'FAKE_ESCROW_' . uniqid();
+        
+        $data = [
+            'amount' => $request->getAmount(),
+            'currency' => $request->getCurrency(),
+            'status' => 'held',
+        ];
+        
+        $this->storage->save('escrows', $escrowId, $data);
+        
         return new EscrowResponse(
             success: true,
-            escrowId: 'FAKE_ESCROW_' . uniqid(),
-            amount: $request->money->amount(),
+            escrowId: $escrowId,
+            amount: $request->getAmount(),
             status: 'held',
             message: 'Amount held in escrow',
-            rawResponse: []
+            rawResponse: $data
         );
     }
 
     public function releaseEscrow(string $escrowId): EscrowResponse
     {
+        $escrow = $this->storage->get('escrows', $escrowId);
+        
+        if ($escrow) {
+            $this->storage->update('escrows', $escrowId, ['status' => 'released']);
+        }
+        
         return new EscrowResponse(
             success: true,
             escrowId: $escrowId,
-            amount: null,
+            amount: $escrow['amount'] ?? null,
             status: 'released',
             message: 'Escrow released',
-            rawResponse: []
+            rawResponse: $escrow ?? []
         );
     }
 
     public function partialReleaseEscrow(string $escrowId, float $amount): EscrowResponse
     {
+        $escrow = $this->storage->get('escrows', $escrowId);
+        
+        if ($escrow) {
+            $newAmount = ($escrow['amount'] ?? 0) - $amount;
+            $this->storage->update('escrows', $escrowId, [
+                'amount' => $newAmount,
+                'status' => 'partially_released'
+            ]);
+        }
+        
         return new EscrowResponse(
             success: true,
             escrowId: $escrowId,
@@ -463,6 +741,12 @@ class FakeBankGateway implements PaymentGatewayInterface
 
     public function cancelEscrow(string $escrowId): EscrowResponse
     {
+        $escrow = $this->storage->get('escrows', $escrowId);
+        
+        if ($escrow) {
+            $this->storage->update('escrows', $escrowId, ['status' => 'cancelled']);
+        }
+        
         return new EscrowResponse(
             success: true,
             escrowId: $escrowId,
@@ -473,69 +757,122 @@ class FakeBankGateway implements PaymentGatewayInterface
         );
     }
 
+    // ==================== TRANSFERÊNCIAS E SAQUES ====================
+    
     public function transfer(TransferRequest $request): TransferResponse
     {
+        $transferId = 'FAKE_TRANSFER_' . uniqid();
+        
+        $data = [
+            'amount' => $request->amount,
+            'recipient_id' => $request->recipientId,
+            'status' => 'completed',
+        ];
+        
+        $this->storage->save('transfers', $transferId, $data);
+        
         return new TransferResponse(
             success: true,
-            transferId: 'FAKE_TRANSFER_' . uniqid(),
-            amount: $request->money->amount(),
-            status: 'completed',
+            transferId: $transferId,
+            money: \IsraelNogueira\PaymentHub\ValueObjects\Money::from($request->amount, \IsraelNogueira\PaymentHub\Enums\Currency::BRL),
+            status: \IsraelNogueira\PaymentHub\Enums\PaymentStatus::fromString('completed'),
             message: 'Transfer completed',
-            rawResponse: []
+            rawResponse: $data
         );
     }
 
     public function scheduleTransfer(TransferRequest $request, string $date): TransferResponse
     {
+        $transferId = 'FAKE_TRANSFER_' . uniqid();
+        
+        $data = [
+            'amount' => $request->amount,
+            'recipient_id' => $request->recipientId,
+            'status' => 'scheduled',
+            'scheduled_date' => $date,
+        ];
+        
+        $this->storage->save('transfers', $transferId, $data);
+        
         return new TransferResponse(
             success: true,
-            transferId: 'FAKE_TRANSFER_' . uniqid(),
-            amount: $request->money->amount(),
-            status: 'scheduled',
+            transferId: $transferId,
+            money: \IsraelNogueira\PaymentHub\ValueObjects\Money::from($request->amount, \IsraelNogueira\PaymentHub\Enums\Currency::BRL),
+            status: \IsraelNogueira\PaymentHub\Enums\PaymentStatus::fromString('scheduled'),
             message: 'Transfer scheduled',
-            rawResponse: ['scheduled_date' => $date]
+            rawResponse: $data
         );
     }
 
     public function cancelScheduledTransfer(string $transferId): TransferResponse
     {
+        $transfer = $this->storage->get('transfers', $transferId);
+        
+        if ($transfer) {
+            $this->storage->update('transfers', $transferId, ['status' => 'cancelled']);
+        }
+        
+        $money = isset($transfer['amount']) 
+            ? \IsraelNogueira\PaymentHub\ValueObjects\Money::from($transfer['amount'], \IsraelNogueira\PaymentHub\Enums\Currency::BRL)
+            : null;
+        
         return new TransferResponse(
             success: true,
             transferId: $transferId,
-            amount: null,
-            status: 'cancelled',
+            money: $money,
+            status: \IsraelNogueira\PaymentHub\Enums\PaymentStatus::fromString('cancelled'),
             message: 'Scheduled transfer cancelled',
             rawResponse: []
         );
     }
 
+    // ==================== LINK DE PAGAMENTO ====================
+    
     public function createPaymentLink(PaymentLinkRequest $request): PaymentLinkResponse
     {
         $linkId = 'FAKE_LINK_' . uniqid();
+        
+        $data = [
+            'amount' => $request->amount,
+            'description' => $request->description ?? null,
+            'url' => 'https://fakebank.com/pay/' . $linkId,
+            'status' => 'active',
+        ];
+        
+        $this->storage->save('payment_links', $linkId, $data);
+        
         return new PaymentLinkResponse(
             success: true,
             linkId: $linkId,
-            url: 'https://fakebank.com/pay/' . $linkId,
+            url: $data['url'],
             status: 'active',
             message: 'Payment link created',
-            rawResponse: []
+            rawResponse: $data
         );
     }
 
     public function getPaymentLink(string $linkId): PaymentLinkResponse
     {
+        $link = $this->storage->get('payment_links', $linkId);
+        
         return new PaymentLinkResponse(
-            success: true,
+            success: $link !== null,
             linkId: $linkId,
-            url: 'https://fakebank.com/pay/' . $linkId,
-            status: 'active',
+            url: $link['url'] ?? null,
+            status: $link['status'] ?? 'not_found',
             message: 'Payment link retrieved',
-            rawResponse: []
+            rawResponse: $link ?? []
         );
     }
 
     public function expirePaymentLink(string $linkId): PaymentLinkResponse
     {
+        $link = $this->storage->get('payment_links', $linkId);
+        
+        if ($link) {
+            $this->storage->update('payment_links', $linkId, ['status' => 'expired']);
+        }
+        
         return new PaymentLinkResponse(
             success: true,
             linkId: $linkId,
@@ -546,18 +883,33 @@ class FakeBankGateway implements PaymentGatewayInterface
         );
     }
 
+    // ==================== CLIENTES ====================
+    
     public function createCustomer(CustomerRequest $request): CustomerResponse
     {
+        $customerId = 'FAKE_CUST_' . uniqid();
+        
+        $data = [
+            'name' => $request->name ?? null,
+            'email' => $request->email ?? null,
+            'document' => $request->document ?? null,
+            'phone' => $request->phone ?? null,
+        ];
+        
+        $this->storage->save('customers', $customerId, $data);
+        
         return new CustomerResponse(
             success: true,
-            customerId: 'FAKE_CUST_' . uniqid(),
+            customerId: $customerId,
             message: 'Customer created',
-            rawResponse: []
+            rawResponse: $data
         );
     }
 
     public function updateCustomer(string $customerId, array $data): CustomerResponse
     {
+        $this->storage->update('customers', $customerId, $data);
+        
         return new CustomerResponse(
             success: true,
             customerId: $customerId,
@@ -568,19 +920,23 @@ class FakeBankGateway implements PaymentGatewayInterface
 
     public function getCustomer(string $customerId): CustomerResponse
     {
+        $customer = $this->storage->get('customers', $customerId);
+        
         return new CustomerResponse(
-            success: true,
+            success: $customer !== null,
             customerId: $customerId,
             message: 'Customer retrieved',
-            rawResponse: []
+            rawResponse: $customer ?? []
         );
     }
 
     public function listCustomers(array $filters = []): array
     {
-        return [];
+        return $this->storage->find('customers', $filters);
     }
 
+    // ==================== ANTIFRAUDE ====================
+    
     public function analyzeTransaction(string $transactionId): array
     {
         return [
@@ -600,6 +956,8 @@ class FakeBankGateway implements PaymentGatewayInterface
         return true;
     }
 
+    // ==================== WEBHOOKS ====================
+    
     public function registerWebhook(string $url, array $events): array
     {
         return [
@@ -619,6 +977,8 @@ class FakeBankGateway implements PaymentGatewayInterface
         return true;
     }
 
+    // ==================== SALDO E CONCILIAÇÃO ====================
+    
     public function getBalance(): BalanceResponse
     {
         return new BalanceResponse(
@@ -647,5 +1007,28 @@ class FakeBankGateway implements PaymentGatewayInterface
             message: 'Anticipation requested',
             rawResponse: ['transaction_ids' => $transactionIds]
         );
+    }
+
+    // ==================== HELPERS ====================
+    
+    private function detectCardBrand(string $cardNumber): string
+    {
+        $cardNumber = preg_replace('/\D/', '', $cardNumber);
+        
+        $patterns = [
+            'visa' => '/^4/',
+            'mastercard' => '/^5[1-5]/',
+            'amex' => '/^3[47]/',
+            'elo' => '/^(4011|4312|4389|4514|4576|5041|5066|5067|6277|6362|6363|6504|6505|6516)/',
+            'hipercard' => '/^606282/',
+        ];
+        
+        foreach ($patterns as $brand => $pattern) {
+            if (preg_match($pattern, $cardNumber)) {
+                return $brand;
+            }
+        }
+        
+        return 'unknown';
     }
 }
