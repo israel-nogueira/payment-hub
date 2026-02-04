@@ -1,7 +1,5 @@
-<!-- agenciafeats@gmail.com -->
-
-
 # PaymentHub 💳
+
 ![PHP Version](https://img.shields.io/badge/php-%3E%3D8.3-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Status](https://img.shields.io/badge/status-active-success)
