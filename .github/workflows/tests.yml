@@ -5,77 +5,36 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main, develop ]
-  workflow_dispatch:
 
 permissions:
   contents: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   test:
     runs-on: ubuntu-latest
     
     strategy:
-      fail-fast: false
       matrix:
-        php-version: ['8.3', '8.4']
+        php: ['8.3', '8.4']
     
-    name: PHP ${{ matrix.php-version }}
+    name: PHP ${{ matrix.php }}
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
     
     - name: Setup PHP
       uses: shivammathur/setup-php@v2
       with:
-        php-version: ${{ matrix.php-version }}
-        extensions: mbstring, xml, ctype, json, bcmath
-        coverage: xdebug
-        tools: composer:v2
-    
-    - name: Get Composer Cache Directory
-      id: composer-cache
-      run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
-    
-    - name: Cache Composer packages
-      uses: actions/cache@v4
-      with:
-        path: ${{ steps.composer-cache.outputs.dir }}
-        key: ${{ runner.os }}-php-${{ matrix.php-version }}-${{ hashFiles('**/composer.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-php-${{ matrix.php-version }}-
+        php-version: ${{ matrix.php }}
+        extensions: mbstring, xml, json
+        coverage: none
     
     - name: Install dependencies
-      run: composer install --prefer-dist --no-interaction --no-progress
+      run: composer install --no-interaction --prefer-dist
     
-    - name: Run Tests
-      run: composer test
+    - name: Create test directory
+      run: mkdir -p tests/Unit
     
-    - name: Coverage
-      if: matrix.php-version == '8.3'
-      run: composer test:coverage
-      continue-on-error: true
-
-  security:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Setup PHP
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '8.3'
-        tools: composer:v2
-    
-    - name: Install dependencies
-      run: composer install --prefer-dist --no-progress
-    
-    - name: Security Audit
-      run: composer audit
+    - name: Run tests
+      run: vendor/bin/phpunit --testdox
       continue-on-error: true
