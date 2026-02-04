@@ -28,7 +28,6 @@ use IsraelNogueira\PaymentHub\DataObjects\Responses\PaymentLinkResponse;
 use IsraelNogueira\PaymentHub\DataObjects\Responses\CustomerResponse;
 use IsraelNogueira\PaymentHub\DataObjects\Responses\BalanceResponse;
 class FakeBankGateway implements PaymentGatewayInterface
-// class FakeBankGateway implements PaymentGatewayInterface
 {
     private array $transactions = [];
     private float $balance = 10000.00;
@@ -100,7 +99,7 @@ class FakeBankGateway implements PaymentGatewayInterface
         return PaymentResponse::create(
             success: true,
             transactionId: $transactionId,
-            status: 'approved',
+            status: 'captured',
             amount: $amount,
             currency: 'BRL',
             message: 'Pre-authorization captured',
@@ -260,8 +259,7 @@ class FakeBankGateway implements PaymentGatewayInterface
             success: true,
             refundId: 'FAKE_REFUND_' . uniqid(),
             transactionId: $request->transactionId,
-            amount: $request->money->amount()
-,
+            amount: $request->money->amount(),
             status: 'refunded',
             message: 'Refund processed',
             rawResponse: []
@@ -305,8 +303,7 @@ class FakeBankGateway implements PaymentGatewayInterface
             success: true,
             transactionId: 'FAKE_SPLIT_' . uniqid(),
             status: 'approved',
-            amount: $request->money->amount()
-,
+            amount: $request->money->amount(),
             currency: 'BRL',
             message: 'Split payment created',
             rawResponse: []
@@ -433,8 +430,7 @@ class FakeBankGateway implements PaymentGatewayInterface
         return new EscrowResponse(
             success: true,
             escrowId: 'FAKE_ESCROW_' . uniqid(),
-            amount: $request->money->amount()
-,
+            amount: $request->money->amount(),
             status: 'held',
             message: 'Amount held in escrow',
             rawResponse: []
@@ -482,8 +478,7 @@ class FakeBankGateway implements PaymentGatewayInterface
         return new TransferResponse(
             success: true,
             transferId: 'FAKE_TRANSFER_' . uniqid(),
-            amount: $request->money->amount()
-,
+            amount: $request->money->amount(),
             status: 'completed',
             message: 'Transfer completed',
             rawResponse: []
@@ -495,8 +490,7 @@ class FakeBankGateway implements PaymentGatewayInterface
         return new TransferResponse(
             success: true,
             transferId: 'FAKE_TRANSFER_' . uniqid(),
-            amount: $request->money->amount()
-,
+            amount: $request->money->amount(),
             status: 'scheduled',
             message: 'Transfer scheduled',
             rawResponse: ['scheduled_date' => $date]

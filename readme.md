@@ -1,55 +1,106 @@
-<!-- agenciafeats@gmail.com a partir das 16:00 -->
+# 💳 Payment Hub
 
+<div align="center">
 
-# PaymentHub 💳
-![PHP Version](https://img.shields.io/badge/php-%3E%3D8.3-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Status](https://img.shields.io/badge/status-active-success)
-![Type Safe](https://img.shields.io/badge/type--safe-100%25-brightgreen)
+![PHP Version](https://img.shields.io/badge/PHP-8.3+-777BB4?style=flat-square&logo=php)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+![Tests](https://img.shields.io/badge/Tests-Passing-success?style=flat-square)
+![Type Safe](https://img.shields.io/badge/Type%20Safe-100%25-blue?style=flat-square)
 
-**PaymentHub** é um adaptador unificado para integração com múltiplos gateways de pagamento brasileiros e internacionais. Com uma interface única e padronizada, você pode alternar entre diferentes provedores de pagamento sem reescrever seu código.
+**A biblioteca PHP mais simples e elegante para pagamentos no Brasil** 🇧🇷
 
----
+[Instalação](#-instalação) • [Início Rápido](#-início-rápido) • [Documentação](#-documentação) • [Exemplos](#-exemplos)
 
-## 📚 Documentação Completa
-
-**[Acesse a documentação completa →](docs/README.md)**
-
-### 🚀 Início Rápido
-- [Instalação](docs/getting-started/installation.md) - Configure em 5 minutos
-- [Primeiro Pagamento](docs/getting-started/first-payment.md) - PIX em 2 minutos
-- [Conceitos Básicos](docs/getting-started/core-concepts.md) - Entenda a arquitetura
-- [Configuração](docs/getting-started/configuration.md) - Ambiente de produção
-
-### 📖 Guias de Uso
-- [PIX](docs/guides/pix.md) - QR Code e Copia e Cola
-- [Cartão de Crédito](docs/guides/credit-card.md) - Parcelamento e Tokenização
-- [Boleto](docs/guides/boleto.md) - Juros e Multa
-- [Money](docs/guides/money.md) - Valores monetários seguros
-- [Enums](docs/guides/enums.md) - Type-safety completo
-
-### 🎯 Exemplos Práticos
-- [E-commerce Completo](docs/examples/ecommerce.md) - Checkout ponta a ponta
-- [Marketplace](docs/examples/marketplace.md) - Split de pagamento
-- [SaaS](docs/examples/saas.md) - Assinaturas recorrentes
-
-### 🆘 Ajuda
-- [FAQ](docs/help/faq.md) - Perguntas frequentes
-- [Troubleshooting](docs/help/troubleshooting.md) - Resolva problemas
+</div>
 
 ---
 
-## ✨ Características
+## 🎯 Por que Payment Hub?
 
-- 🔌 **Plug & Play**: Interface única para múltiplos gateways
-- 🎯 **Type-Safe**: PHP 8.3+ com Enums e Type Hints completos
-- 🛡️ **Validações Robustas**: ValueObjects com validação automática (CPF, CNPJ, Email, Cartão)
-- 📦 **DTOs Imutáveis**: Requisições e respostas tipadas e padronizadas
-- 💰 **Money Object**: Manipulação segura de valores monetários
-- 🧪 **Testável**: Gateway fake incluso para testes locais
-- 🚀 **Extensível**: Fácil adicionar novos gateways
-- 🇧🇷 **Brasil First**: Suporte completo a PIX, Boleto e validação de documentos brasileiros
-- 🌍 **Internacional**: Suporte a cartões internacionais e múltiplas moedas
+```php
+// ❌ Antes: código verboso e complexo
+$curl = curl_init();
+curl_setopt($curl, CURLOPT_URL, 'https://api.gateway.com/v1/payments');
+curl_setopt($curl, CURLOPT_HTTPHEADER, ['Authorization: Bearer xyz']);
+// ... 20 linhas depois...
+
+// ✅ Agora: simples e elegante
+$payment = $hub->createPixPayment(
+    PixPaymentRequest::create(
+        amount: 100.00,
+        customerEmail: 'cliente@email.com'
+    )
+);
+```
+
+### ✨ Características
+
+- 🚀 **Zero configuração inicial** - comece testando sem APIs reais
+- 🎨 **Type-safe** - PHP 8.3+ com tipos estritos
+- 💰 **ValueObjects** - Money, CPF, CardNumber validados automaticamente
+- 🔄 **Fácil migração** - troque de gateway sem alterar código
+- 🧪 **Gateway Fake** - teste sem depender de APIs externas
+- 🇧🇷 **100% em português** - documentação e código
+
+### 🎯 Funcionalidades Completas
+
+<table>
+<tr>
+<td width="50%">
+
+**💳 Pagamentos**
+- ✅ PIX (com QR Code)
+- ✅ Cartão de Crédito (à vista/parcelado)
+- ✅ Cartão de Débito
+- ✅ Boleto Bancário
+- ✅ Link de Pagamento
+
+**💸 Operações Financeiras**
+- ✅ Reembolsos (total/parcial)
+- ✅ Split de Pagamento
+- ✅ Transferências (PIX/TED)
+- ✅ Agendamento de Transferências
+- ✅ Antecipação de Recebíveis
+
+**🔒 Gestão Avançada**
+- ✅ Escrow (Custódia)
+- ✅ Liberação Parcial/Total
+- ✅ Cancelamento de Custódia
+
+</td>
+<td width="50%">
+
+**🔁 Recorrência**
+- ✅ Criar Assinaturas
+- ✅ Cancelar/Suspender
+- ✅ Reativar Assinatura
+- ✅ Atualizar Dados
+
+**🏢 Multi-tenant**
+- ✅ Sub-contas (Marketplaces)
+- ✅ Ativar/Desativar contas
+- ✅ Gestão de Permissões
+
+**👛 Wallets**
+- ✅ Criar Carteiras
+- ✅ Adicionar/Deduzir Saldo
+- ✅ Transferir entre Wallets
+- ✅ Consultar Saldo
+
+**👤 Gestão de Clientes**
+- ✅ Cadastrar Clientes
+- ✅ Atualizar Dados
+- ✅ Listar e Buscar
+
+**🛡️ Segurança**
+- ✅ Análise Antifraude
+- ✅ Blacklist/Whitelist
+- ✅ Webhooks
+- ✅ Tokenização de Cartões
+
+</td>
+</tr>
+</table>
 
 ---
 
@@ -61,395 +112,387 @@ composer require israel-nogueira/payment-hub
 
 ---
 
-## 🚀 Exemplo Rápido
+## ⚡ Início Rápido
+
+### 1️⃣ Testando sem API (Gateway Fake)
+
+Comece desenvolvendo **sem precisar de credenciais reais**:
 
 ```php
-<?php
-
 use IsraelNogueira\PaymentHub\PaymentHub;
 use IsraelNogueira\PaymentHub\Gateways\FakeBankGateway;
 use IsraelNogueira\PaymentHub\DataObjects\Requests\PixPaymentRequest;
-use IsraelNogueira\PaymentHub\Enums\Currency;
 
-// 1. Instancia
+// Cria o hub com gateway fake (não precisa de API)
 $hub = new PaymentHub(new FakeBankGateway());
 
-// 2. Cria pagamento PIX
+// Faz um pagamento PIX de teste
+$payment = $hub->createPixPayment(
+    PixPaymentRequest::create(
+        amount: 150.00,
+        customerName: 'João Silva',
+        customerEmail: 'joao@email.com',
+        description: 'Pedido #123'
+    )
+);
+
+echo "✅ Pagamento criado: {$payment->transactionId}\n";
+echo "💰 Valor: {$payment->getFormattedAmount()}\n";
+echo "📊 Status: {$payment->getStatusLabel()}\n";
+
+// Pega QR Code do PIX
+$qrCode = $hub->getPixQrCode($payment->transactionId);
+```
+
+**Saída:**
+```
+✅ Pagamento criado: FAKE_PIX_65a8b2c4d1e9f
+💰 Valor: R$ 150,00
+📊 Status: Aprovado
+```
+
+---
+
+## 💳 Exemplos Práticos
+
+### PIX - O Mais Simples Possível
+
+```php
+// Pagamento PIX básico
+$pix = $hub->createPixPayment(
+    PixPaymentRequest::create(
+        amount: 50.00,
+        customerEmail: 'cliente@email.com'
+    )
+);
+
+// Pega o código copia-e-cola
+$copiaECola = $hub->getPixCopyPaste($pix->transactionId);
+
+// Exibe para o usuário
+echo "Pague com este código PIX:\n{$copiaECola}";
+```
+
+### PIX com Expiração
+
+```php
+// PIX que expira em 30 minutos
+$pix = $hub->createPixPayment(
+    PixPaymentRequest::create(
+        amount: 250.00,
+        customerEmail: 'cliente@email.com',
+        expiresInMinutes: 30
+    )
+);
+```
+
+---
+
+### 💳 Cartão de Crédito
+
+```php
+use IsraelNogueira\PaymentHub\DataObjects\Requests\CreditCardPaymentRequest;
+
+// Pagamento à vista
+$payment = $hub->createCreditCardPayment(
+    CreditCardPaymentRequest::create(
+        amount: 299.90,
+        cardNumber: '4111 1111 1111 1111',
+        cardHolderName: 'MARIA SILVA',
+        cardExpiryMonth: '12',
+        cardExpiryYear: '2028',
+        cardCvv: '123'
+    )
+);
+
+// Parcelado em 3x
+$payment = $hub->createCreditCardPayment(
+    CreditCardPaymentRequest::create(
+        amount: 899.90,
+        cardNumber: '5555 5555 5555 4444',
+        cardHolderName: 'JOSE SANTOS',
+        cardExpiryMonth: '08',
+        cardExpiryYear: '2027',
+        cardCvv: '321',
+        installments: 3
+    )
+);
+
+echo "💳 Cartão: {$payment->getCardBrand()}\n";
+echo "💰 3x de R$ " . number_format(899.90/3, 2, ',', '.') . "\n";
+```
+
+---
+
+### 📄 Boleto
+
+```php
+use IsraelNogueira\PaymentHub\DataObjects\Requests\BoletoPaymentRequest;
+
+$boleto = $hub->createBoleto(
+    BoletoPaymentRequest::create(
+        amount: 450.00,
+        customerName: 'João Silva',
+        customerDocument: '123.456.789-00',
+        customerEmail: 'joao@email.com',
+        dueDate: '2025-03-15',
+        description: 'Mensalidade Março/2025'
+    )
+);
+
+// Pega a URL do boleto em PDF
+$urlPdf = $hub->getBoletoUrl($boleto->transactionId);
+
+echo "📄 Boleto gerado!\n";
+echo "🔗 Download: {$urlPdf}\n";
+echo "📅 Vencimento: 15/03/2025\n";
+```
+
+---
+
+## 🚀 Funcionalidades Avançadas
+
+### 🔁 Assinaturas Recorrentes
+
+```php
+use IsraelNogueira\PaymentHub\DataObjects\Requests\SubscriptionRequest;
+
+// Criar assinatura mensal
+$subscription = $hub->createSubscription(
+    SubscriptionRequest::create(
+        amount: 49.90,
+        interval: 'monthly',
+        customerId: 'cust_123',
+        cardToken: 'tok_456',
+        description: 'Plano Premium',
+        trialDays: 7 // 7 dias grátis
+    )
+);
+
+echo "🔁 Assinatura criada: {$subscription->subscriptionId}\n";
+```
+
+### 💸 Split de Pagamento (Marketplaces)
+
+```php
+use IsraelNogueira\PaymentHub\DataObjects\Requests\SplitPaymentRequest;
+
+// Dividir pagamento entre vendedor e marketplace
+$payment = $hub->createSplitPayment(
+    SplitPaymentRequest::create(
+        amount: 1000.00,
+        splits: [
+            ['recipient_id' => 'seller_1', 'amount' => 850.00],  // 85%
+            ['recipient_id' => 'marketplace', 'amount' => 150.00] // 15%
+        ],
+        paymentMethod: 'credit_card'
+    )
+);
+```
+
+### 🔒 Escrow (Custódia)
+
+```php
+use IsraelNogueira\PaymentHub\DataObjects\Requests\EscrowRequest;
+
+// Segurar valor em custódia por 7 dias
+$escrow = $hub->holdInEscrow(
+    EscrowRequest::create(
+        amount: 500.00,
+        recipientId: 'seller_123',
+        holdDays: 7,
+        description: 'Aguardando entrega'
+    )
+);
+
+// Liberar quando produto for entregue
+$release = $hub->releaseEscrow($escrow->escrowId);
+```
+
+### 👛 Wallets (Carteiras Digitais)
+
+```php
+use IsraelNogueira\PaymentHub\DataObjects\Requests\WalletRequest;
+
+// Criar carteira
+$wallet = $hub->createWallet(
+    WalletRequest::create(
+        userId: 'user_123',
+        currency: 'BRL'
+    )
+);
+
+// Adicionar saldo
+$hub->addBalance($wallet->walletId, 100.00);
+
+// Transferir entre carteiras
+$transfer = $hub->transferBetweenWallets(
+    fromWalletId: 'wallet_abc',
+    toWalletId: 'wallet_xyz',
+    amount: 50.00
+);
+```
+
+### 🏢 Sub-contas (Multi-tenant)
+
+```php
+use IsraelNogueira\PaymentHub\DataObjects\Requests\SubAccountRequest;
+
+// Criar sub-conta para vendedor
+$subAccount = $hub->createSubAccount(
+    SubAccountRequest::create(
+        name: 'Loja do João',
+        document: '12.345.678/0001-90',
+        email: 'joao@loja.com',
+        type: 'seller'
+    )
+);
+
+echo "🏢 Sub-conta criada: {$subAccount->subAccountId}\n";
+```
+
+### 💰 Reembolsos
+
+```php
+use IsraelNogueira\PaymentHub\DataObjects\Requests\RefundRequest;
+
+// Reembolso total
+$refund = $hub->refund(
+    RefundRequest::create(
+        transactionId: 'txn_123',
+        reason: 'Cliente solicitou cancelamento'
+    )
+);
+
+// Reembolso parcial
+$partialRefund = $hub->partialRefund(
+    transactionId: 'txn_456',
+    amount: 50.00
+);
+```
+
+---
+
+## 🔄 Mudando para Gateway Real
+
+Quando estiver pronto, **troque apenas 1 linha**:
+
+```php
+// Era assim (fake):
+$hub = new PaymentHub(new FakeBankGateway());
+
+// Agora é assim (real):
+$hub = new PaymentHub(new MercadoPagoGateway([
+    'access_token' => 'SEU_TOKEN_AQUI'
+]));
+
+// Todo o resto do código continua igual! 🎉
+```
+
+### Gateways Suportados
+
+| Gateway | Status | Métodos Suportados |
+|---------|--------|---------|
+| 🧪 **FakeBankGateway** | ✅ Pronto | **Todos** (PIX, Cartão, Boleto, Assinaturas, Split, Escrow, Wallets, Sub-contas) |
+| 💚 MercadoPago | 🚧 Em breve | PIX, Cartão, Boleto, Split |
+| 🔵 PagSeguro | 🚧 Em breve | PIX, Cartão, Boleto |
+| 🟣 Asaas | 🚧 Em breve | PIX, Cartão, Boleto, Assinaturas, Split |
+| ⚫ Stripe | 🚧 Em breve | Cartão, Assinaturas |
+
+> 💡 **O FakeBankGateway implementa TODAS as funcionalidades da biblioteca** - perfeito para desenvolvimento e testes!
+
+**📢 Quer contribuir?** Implemente seu próprio gateway! [Veja como →](docs/creating-gateway.md)
+
+---
+
+## 🎨 ValueObjects - Validação Automática
+
+```php
+// CPF é validado automaticamente
 $request = PixPaymentRequest::create(
     amount: 100.00,
-    currency: Currency::BRL,
-    description: 'Meu primeiro PIX',
-    customerName: 'João Silva',
-    customerDocument: '123.456.789-00',
-    customerEmail: 'joao@email.com'
+    customerDocument: '123.456.789-00' // ✅ Válido
 );
 
-// 3. Processa
-$response = $hub->createPixPayment($request);
-
-// 4. Usa resultado
-if ($response->isSuccess()) {
-    echo "✅ PIX criado!\n";
-    echo "QR Code: " . $hub->getPixQrCode($response->transactionId) . "\n";
-    echo "Copia e Cola: " . $hub->getPixCopyPaste($response->transactionId) . "\n";
-}
-```
-
-**[Ver exemplo completo →](docs/getting-started/first-payment.md)**
-
----
-
-## 🎯 Diferenciais
-
-### 🔒 Type-Safety Completo
-```php
-use IsraelNogueira\PaymentHub\Enums\{Currency, PaymentStatus};
-
-// Enums previnem typos e erros
-$currency = Currency::BRL;  // ✅ Type-safe
-$status = PaymentStatus::PAID;  // ✅ Autocomplete na IDE
-```
-
-### 🛡️ Validações Automáticas
-```php
-use IsraelNogueira\PaymentHub\ValueObjects\{CPF, CardNumber, Email};
-
-// Lança exceção se inválido
-$cpf = CPF::fromString('123.456.789-00');
-$card = CardNumber::fromString('4111 1111 1111 1111');
-$email = Email::fromString('joao@email.com');
-```
-
-### 💰 Money Object
-```php
-use IsraelNogueira\PaymentHub\ValueObjects\Money;
-
-$price = Money::from(100.00, Currency::BRL);
-$discount = $price->percentage(10);  // 10%
-$total = $price->subtract($discount);
-
-echo $total->formatted();  // R$ 90,00
-```
-
-**[Saiba mais sobre ValueObjects →](docs/guides/value-objects.md)**
-
----
-
-## 📋 Funcionalidades
-
-### Métodos de Pagamento
-- ✅ **PIX** (QR Code dinâmico/estático, copia e cola)
-- ✅ **Cartão de Crédito** (parcelado, tokenização, 3DS)
-- ✅ **Cartão de Débito**
-- ✅ **Boleto** (com juros, multa e desconto)
-
-### Recursos Avançados
-- 🔄 **Assinaturas/Recorrência** (com trial)
-- 💰 **Split de Pagamento** (marketplace)
-- 🏦 **Sub-contas** (onboarding de sellers)
-- 👛 **Wallets** (carteiras digitais)
-- 🔒 **Escrow** (custódia de valores)
-- 🔗 **Links de Pagamento**
-- ↩️ **Estornos** (total e parcial)
-- 🚨 **Chargebacks** (disputa)
-- 📤 **Transferências** (PIX, TED, agendadas)
-- 👤 **Gestão de Clientes**
-- 🛡️ **Antifraude**
-- 📢 **Webhooks**
-- 💵 **Consulta de Saldo**
-
----
-
-## 💳 Exemplos de Uso
-
-### PIX com Validações
-
-```php
+// ❌ Lança InvalidDocumentException
 $request = PixPaymentRequest::create(
-    amount: 100.50,
-    currency: Currency::BRL,
-    customerDocument: '123.456.789-00',  // Valida CPF automaticamente
-    customerEmail: 'joao@email.com',     // Valida email automaticamente
+    amount: 100.00,
+    customerDocument: '000.000.000-00' // CPF inválido
 );
 
-$response = $hub->createPixPayment($request);
-
-if ($response->status->isPaid()) {
-    echo "Valor: " . $response->getFormattedAmount() . "\n";  // "R$ 100,50"
-}
-```
-
-**[Guia completo de PIX →](docs/guides/pix.md)**
-
-### Cartão de Crédito Parcelado
-
-```php
+// Cartões validam Luhn automaticamente
 $request = CreditCardPaymentRequest::create(
-    amount: 300.00,
-    currency: Currency::BRL,
-    cardNumber: '4111 1111 1111 1111',  // Valida automaticamente
-    cardHolderName: 'JOAO SILVA',
-    cardExpiryMonth: '12',
-    cardExpiryYear: '2028',
-    cardCvv: '123',
-    installments: 3,  // 3x sem juros
+    amount: 100.00,
+    cardNumber: '4111 1111 1111 1111' // ✅ Válido
 );
 
-$response = $hub->createCreditCardPayment($request);
-
-if ($response->isSuccess()) {
-    echo "Bandeira: " . $request->getCardBrand() . "\n";  // "visa"
-    echo "Parcelas: " . $request->getFormattedDescription() . "\n";  // "3x de R$ 100,00"
-}
+// Money previne valores negativos
+$money = Money::from(-50.00); // ❌ InvalidAmountException
 ```
-
-**[Guia completo de Cartão →](docs/guides/credit-card.md)**
-
-### Trabalhando com Money
-
-```php
-use IsraelNogueira\PaymentHub\ValueObjects\Money;
-
-$price = Money::from(100.00, Currency::BRL);
-$discount = $price->percentage(10);
-$shipping = Money::from(15.50, Currency::BRL);
-
-$total = $price
-    ->subtract($discount)
-    ->add($shipping);
-
-echo $total->formatted();  // R$ 105,50
-
-// Dividir em parcelas
-$installments = $total->split(3);
-foreach ($installments as $i => $value) {
-    echo "Parcela " . ($i + 1) . ": " . $value->formatted() . "\n";
-}
-```
-
-**[Guia completo de Money →](docs/guides/money.md)**
 
 ---
 
-## 🔐 Validações
+## 📚 Documentação Completa
 
-### CPF/CNPJ
-
-```php
-use IsraelNogueira\PaymentHub\ValueObjects\{CPF, CNPJ};
-
-// CPF
-$cpf = CPF::fromString('123.456.789-00');
-echo $cpf->formatted();  // 123.456.789-00
-echo $cpf->masked();     // ***.456.789-00
-
-// CNPJ
-$cnpj = CNPJ::fromString('12.345.678/0001-00');
-echo $cnpj->formatted();  // 12.345.678/0001-00
-```
-
-### Cartão
-
-```php
-use IsraelNogueira\PaymentHub\ValueObjects\CardNumber;
-
-$card = CardNumber::fromString('4111 1111 1111 1111');
-
-echo $card->brand();           // visa
-echo $card->masked();          // ************1111
-echo $card->brandIcon();       // 💳 Visa
-```
-
-### Email
-
-```php
-use IsraelNogueira\PaymentHub\ValueObjects\Email;
-
-$email = Email::fromString('joao@email.com');
-
-echo $email->value();   // joao@email.com
-echo $email->domain();  // email.com
-```
-
-**[Mais sobre validações →](docs/guides/value-objects.md)**
+- 📖 [Conceitos Principais](docs/core-concepts.md)
+- 💳 [Pagamentos com Cartão](docs/credit-card.md)
+- 💰 [PIX](docs/pix.md)
+- 📄 [Boleto](docs/boleto.md)
+- 🔁 [Assinaturas](docs/subscriptions.md)
+- 💸 [Split de Pagamento](docs/split-payments.md)
+- 🎣 [Webhooks](docs/webhooks.md)
+- 🏗️ [Criar Seu Próprio Gateway](docs/creating-gateway.md)
+- ❓ [FAQ](docs/faq.md)
 
 ---
 
-## 🎨 Usando Enums
-
-### Status de Pagamento
-
-```php
-use IsraelNogueira\PaymentHub\Enums\PaymentStatus;
-
-$status = $response->status;
-
-if ($status->isPaid()) {
-    echo "✅ " . $status->label();  // "Aprovado"
-}
-
-// Match pattern
-$message = match(true) {
-    $status->isPaid() => "Pagamento aprovado!",
-    $status->isPending() => "Aguardando confirmação...",
-    $status->isFailed() => "Pagamento recusado.",
-    default => "Status desconhecido"
-};
-```
-
-### Moedas
-
-```php
-use IsraelNogueira\PaymentHub\Enums\Currency;
-
-$currency = Currency::BRL;
-
-echo $currency->symbol();    // R$
-echo $currency->name();      // Real Brasileiro
-echo $currency->format(1234.56);  // R$ 1.234,56
-```
-
-**[Guia completo de Enums →](docs/guides/enums.md)**
-
----
-
-## 🔧 Tratamento de Erros
-
-```php
-use IsraelNogueira\PaymentHub\Exceptions\{
-    InvalidCardNumberException,
-    InvalidDocumentException,
-    GatewayException
-};
-
-try {
-    $request = PixPaymentRequest::create(
-        amount: 100.00,
-        customerDocument: '123.456.789-00',  // Pode ser inválido
-    );
-    
-    $response = $hub->createPixPayment($request);
-    
-} catch (InvalidDocumentException $e) {
-    echo "CPF/CNPJ inválido: " . $e->getMessage();
-    
-} catch (GatewayException $e) {
-    Log::error('Payment failed', [
-        'gateway' => $e->getGateway(),
-        'error' => $e->getMessage(),
-    ]);
-    
-} catch (\Exception $e) {
-    echo "Erro inesperado: " . $e->getMessage();
-}
-```
-
-**[Guia de tratamento de erros →](docs/guides/error-handling.md)**
-
----
-
-## 🧪 Testes
+## 🧪 Testando
 
 ```bash
-# Executar testes
+# Rodar todos os testes
 composer test
 
-# Com coverage
+# Com cobertura
 composer test:coverage
 
-# Análise estática
+# PHPStan (análise estática)
 composer analyse
 ```
-
-**[Guia de testes →](docs/advanced/testing.md)**
-
----
-
-## 📌 Criando seu Gateway
-
-```php
-<?php
-
-namespace MeuProjeto\Gateways;
-
-use IsraelNogueira\PaymentHub\Contracts\PaymentGatewayInterface;
-
-class MeuGateway implements PaymentGatewayInterface
-{
-    public function createPixPayment(PixPaymentRequest $request): PaymentResponse
-    {
-        // Sua implementação aqui
-    }
-    
-    // Implemente os outros métodos...
-}
-```
-
-**[Guia completo →](docs/advanced/creating-gateway.md)**
-
----
-
-## 🎯 Gateways Planejados
-
-- [ ] **Stripe**
-- [ ] **PagarMe**
-- [ ] **MercadoPago**
-- [ ] **Asaas**
-- [ ] **PagSeguro**
-- [ ] **PayPal**
-- [ ] **Iugu**
-- [ ] **Vindi**
-- [ ] **Cielo**
-- [ ] **Rede**
-
-**Quer contribuir com um adapter?** Abra um PR! 🚀
 
 ---
 
 ## 🤝 Contribuindo
 
-Contribuições são muito bem-vindas!
+Contribuições são muito bem-vindas! 
 
 1. Fork o projeto
-2. Crie uma branch (`git checkout -b feature/NovoGateway`)
-3. Commit suas mudanças (`git commit -m 'Adiciona gateway X'`)
-4. Push para a branch (`git push origin feature/NovoGateway`)
+2. Crie sua feature branch (`git checkout -b feature/MinhaFeature`)
+3. Commit suas mudanças (`git commit -m 'Add: MinhaFeature'`)
+4. Push para a branch (`git push origin feature/MinhaFeature`)
 5. Abra um Pull Request
 
-**[Guia de contribuição →](docs/help/contributing.md)**
+Veja [CONTRIBUTING.md](docs/contributing.md) para mais detalhes.
 
 ---
 
 ## 📄 Licença
 
-MIT License - veja [LICENSE](LICENSE) para mais detalhes.
+Este projeto está sob a licença MIT. Veja [LICENSE](LICENSE) para mais detalhes.
 
 ---
 
-## 👨‍💻 Autor
+## 💬 Suporte
 
-**Israel Nogueira**  
-📧 israel@feats.com.br  
-🐙 [GitHub](https://github.com/israel-nogueira)
-
----
-
-## 🔗 Links Úteis
-
-- 📦 [Packagist](https://packagist.org/packages/israel-nogueira/payment-hub)
-- 📖 [Documentação Completa](docs/README.md)
-- 🐛 [Reportar Bug](https://github.com/israel-nogueira/payment-hub/issues)
-- 💬 [Discussões](https://github.com/israel-nogueira/payment-hub/discussions)
-- ❓ [FAQ](docs/help/faq.md)
+- 📧 Email: israel.nogueira@gmail.com
+- 🐛 Issues: [GitHub Issues](https://github.com/israel-nogueira/payment-hub/issues)
+- 💬 Discussões: [GitHub Discussions](https://github.com/israel-nogueira/payment-hub/discussions)
 
 ---
 
-## ⭐ Mostre seu Apoio
+<div align="center">
 
-Se este projeto te ajudou, deixe uma ⭐ no repositório!
+**Feito com ❤️ para a comunidade PHP brasileira** 🇧🇷
 
----
+⭐ Se este projeto te ajudou, deixe uma estrela no GitHub!
 
-**Feito com ❤️ para a comunidade PHP brasileira**
-
-*Type-safe, validado e pronto para produção!* 🚀
+</div>
