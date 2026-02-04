@@ -63,11 +63,29 @@ final class CPF
     }
 
     /**
+     * Get first 3 digits masked
+     */
+    public function partialMasked(): string
+    {
+        return sprintf(
+            '***.***.*%s-%s',
+            substr($this->value, 7, 2),
+            substr($this->value, 9, 2)
+        );
+    }
+
+    /**
      * Clean CPF (remove dots, dashes, spaces)
      */
     private function clean(string $cpf): string
     {
-        return preg_replace('/\D/', '', $cpf);
+        $cleaned = preg_replace('/\D/', '', $cpf);
+        
+        if (empty($cleaned)) {
+            throw new InvalidDocumentException("CPF cannot be empty");
+        }
+        
+        return $cleaned;
     }
 
     /**

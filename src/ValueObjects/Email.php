@@ -12,6 +12,10 @@ final class Email
     {
         $cleaned = trim(strtolower($value));
         
+        if (empty($cleaned)) {
+            throw new InvalidEmailException("Email cannot be empty");
+        }
+        
         if (!$this->isValid($cleaned)) {
             throw new InvalidEmailException("Invalid email: {$value}");
         }
@@ -50,6 +54,24 @@ final class Email
     }
 
     /**
+     * Get partially masked email (use***@domain.com)
+     */
+    public function partialMasked(): string
+    {
+        [$local, $domain] = explode('@', $this->value);
+        
+        $localLength = strlen($local);
+        if ($localLength <= 3) {
+            return $this->masked();
+        }
+        
+        $visibleStart = 3;
+        $maskedLocal = substr($local, 0, $visibleStart) . str_repeat('*', $localLength - $visibleStart);
+        
+        return $maskedLocal . '@' . $domain;
+    }
+
+    /**
      * Get domain part
      */
     public function domain(): string
@@ -74,6 +96,16 @@ final class Email
     }
 
     /**
+     * Check if email is from multiple domains
+     * @param array<int, string> $domains
+     */
+    public function isFromDomains(array $domains): bool
+    {
+        $lowerDomains = array_map('strtolower', $domains);
+        return in_array($this->domain(), $lowerDomains);
+    }
+
+    /**
      * Check if email is disposable/temporary
      */
     public function isDisposable(): bool
@@ -86,6 +118,9 @@ final class Email
             'throwaway.email',
             'maildrop.cc',
             'temp-mail.org',
+            'yopmail.com',
+            'getnada.com',
+            'trashmail.com',
         ];
 
         return in_array($this->domain(), $disposableDomains);
@@ -96,6 +131,10 @@ final class Email
      */
     private function isValid(string $email): bool
     {
+        if (strlen($email) > 254) {
+            return false;
+        }
+        
         return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
     }
 

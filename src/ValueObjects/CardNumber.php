@@ -64,6 +64,22 @@ final class CardNumber
     }
 
     /**
+     * Get last 4 digits
+     */
+    public function lastFour(): string
+    {
+        return substr($this->value, -4);
+    }
+
+    /**
+     * Get first 6 digits (BIN)
+     */
+    public function bin(): string
+    {
+        return substr($this->value, 0, 6);
+    }
+
+    /**
      * Get card brand
      */
     public function brand(): string
@@ -132,7 +148,13 @@ final class CardNumber
      */
     private function clean(string $number): string
     {
-        return preg_replace('/\D/', '', $number);
+        $cleaned = preg_replace('/\D/', '', $number);
+        
+        if (empty($cleaned)) {
+            throw new InvalidCardNumberException("Card number cannot be empty");
+        }
+        
+        return $cleaned;
     }
 
     /**
@@ -177,7 +199,7 @@ final class CardNumber
      */
     public function __toString(): string
     {
-        return $this->formattedMasked();
+        return $this->masked();
     }
 
     /**
@@ -185,6 +207,6 @@ final class CardNumber
      */
     public function jsonSerialize(): string
     {
-        return $this->formattedMasked();
+        return $this->masked();
     }
 }

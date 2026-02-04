@@ -1,18 +1,65 @@
 {
     "name": "israel-nogueira/payment-hub",
-    "description": "Adaptador unificado para integração com múltiplos gateways de pagamento",
+    "description": "Adaptador unificado para integração com múltiplos gateways de pagamento brasileiros e internacionais",
     "type": "library",
     "license": "MIT",
+    "keywords": [
+        "payment",
+        "gateway",
+        "pix",
+        "boleto",
+        "credit-card",
+        "brasil",
+        "stripe",
+        "pagarme",
+        "mercadopago",
+        "payment-processing"
+    ],
+    "authors": [
+        {
+            "name": "Israel Nogueira",
+            "email": "israel@feats.com.br",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=8.3",
+        "psr/log": "^3.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0",
+        "phpstan/phpstan": "^1.10",
+        "squizlabs/php_codesniffer": "^3.8",
+        "friendsofphp/php-cs-fixer": "^3.48"
+    },
     "autoload": {
         "psr-4": {
             "IsraelNogueira\\PaymentHub\\": "src/"
         }
     },
-    "authors": [
-        {
-            "name": "Israel Nogueira",
-            "email": "israel@feats.com.br"
+    "autoload-dev": {
+        "psr-4": {
+            "IsraelNogueira\\PaymentHub\\Tests\\": "tests/"
         }
-    ],
-    "require": {}
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test:coverage": "phpunit --coverage-html coverage --coverage-text",
+        "analyse": "phpstan analyse src --level=8",
+        "cs": "phpcs src --standard=PSR12",
+        "cs:fix": "phpcbf src --standard=PSR12",
+        "fix": "php-cs-fixer fix src",
+        "check": [
+            "@analyse",
+            "@cs",
+            "@test"
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
 }

@@ -56,8 +56,22 @@ final class CNPJ
     public function masked(): string
     {
         return sprintf(
-            '**.***.**/%s-%s',
+            '**.***.**%s/%s-%s',
+            substr($this->value, 7, 1),
             substr($this->value, 8, 4),
+            substr($this->value, 12, 2)
+        );
+    }
+
+    /**
+     * Get partially masked CNPJ (**.***.***/**00-00)
+     */
+    public function partialMasked(): string
+    {
+        return sprintf(
+            '**.***.**%s/**%s-%s',
+            substr($this->value, 7, 1),
+            substr($this->value, 10, 2),
             substr($this->value, 12, 2)
         );
     }
@@ -67,7 +81,13 @@ final class CNPJ
      */
     private function clean(string $cnpj): string
     {
-        return preg_replace('/\D/', '', $cnpj);
+        $cleaned = preg_replace('/\D/', '', $cnpj);
+        
+        if (empty($cleaned)) {
+            throw new InvalidDocumentException("CNPJ cannot be empty");
+        }
+        
+        return $cleaned;
     }
 
     /**
