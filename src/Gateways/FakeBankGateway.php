@@ -366,20 +366,19 @@ class FakeBankGateway implements PaymentGatewayInterface
 
     // ==================== TRANSAÇÕES ====================
     
-    public function getTransactionStatus(string $transactionId): TransactionStatusResponse
-    {
-        $transaction = $this->storage->get('transactions', $transactionId);
-        
-        return new TransactionStatusResponse(
-            success: $transaction !== null,
-            transactionId: $transactionId,
-            status: $transaction['status'] ?? 'not_found',
-            amount: $transaction['amount'] ?? null,
-            currency: $transaction['currency'] ?? 'BRL',
-            rawResponse: $transaction
-        );
-    }
-
+	public function getTransactionStatus(string $transactionId): TransactionStatusResponse
+	{
+		$transaction = $this->storage->get('transactions', $transactionId);
+		
+		return TransactionStatusResponse::create(
+			success: $transaction !== null,
+			transactionId: $transactionId,
+			status: $transaction['status'] ?? 'not_found',
+			amount: $transaction['amount'] ?? null,
+			currency: $transaction['currency'] ?? 'BRL',
+			rawResponse: $transaction
+		);
+	}
     public function listTransactions(array $filters = []): array
     {
         return $this->storage->find('transactions', $filters);
@@ -387,29 +386,44 @@ class FakeBankGateway implements PaymentGatewayInterface
 
     // ==================== ESTORNOS E CHARGEBACKS ====================
     
-    public function refund(RefundRequest $request): RefundResponse
-    {
-        $refundId = 'FAKE_REFUND_' . uniqid();
-        
-        $data = [
-            'transaction_id' => $request->transactionId,
-            'amount' => $request->amount,
-            'reason' => $request->reason ?? null,
-            'status' => 'refunded',
-        ];
-        
-        $this->storage->save('refunds', $refundId, $data);
-        
-        return new RefundResponse(
-            success: true,
-            refundId: $refundId,
-            transactionId: $request->transactionId,
-            amount: $request->amount,
-            status: 'refunded',
-            message: 'Refund processed',
-            rawResponse: $data
-        );
-    }
+	public function refund(RefundRequest $request): RefundResponse
+	{
+		$refundId = 'FAKE_REFUND_' . uniqid();
+		
+		// Busca transação original
+		$transaction = $this->storage->get('transactions', $request->transactionId);
+		
+		// Verifica se é estorno parcial
+		$isPartialRefund = $request->isPartialRefund();
+		
+		// Define valor do estorno
+		$refundAmount = $isPartialRefund 
+			? $request->amount 
+			: ($transaction['amount'] ?? 0.0);
+		
+		$data = [
+			'transaction_id' => $request->transactionId,
+			'amount' => $refundAmount,
+			'original_amount' => $transaction['amount'] ?? null,
+			'refund_type' => $isPartialRefund ? 'partial' : 'full',
+			'reason' => $request->reason ?? null,
+			'status' => 'refunded',
+		];
+		
+		$this->storage->save('refunds', $refundId, $data);
+		
+		// Usa o factory method ::create()
+		return RefundResponse::create(
+			success: true,
+			refundId: $refundId,
+			transactionId: $request->transactionId,
+			amount: $refundAmount,
+			status: 'refunded',
+			currency: $transaction['currency'] ?? 'BRL',
+			message: $isPartialRefund ? 'Partial refund processed' : 'Full refund processed',
+			rawResponse: $data
+		);
+	}
 
     public function partialRefund(string $transactionId, float $amount): RefundResponse
     {
