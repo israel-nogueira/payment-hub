@@ -1,6 +1,6 @@
 <?php
 
-namespace IsraelNogueira\PaymentHub\Gateways;
+namespace IsraelNogueira\PaymentHub\Gateways\FakeBank;
 
 use IsraelNogueira\PaymentHub\Contracts\PaymentGatewayInterface;
 use IsraelNogueira\PaymentHub\DataObjects\Requests\PixPaymentRequest;

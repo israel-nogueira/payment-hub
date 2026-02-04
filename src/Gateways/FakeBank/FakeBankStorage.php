@@ -1,6 +1,6 @@
 <?php
 
-namespace IsraelNogueira\PaymentHub\Gateways;
+namespace IsraelNogueira\PaymentHub\Gateways\FakeBank;
 
 class FakeBankStorage
 {
