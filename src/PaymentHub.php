@@ -68,15 +68,15 @@ class PaymentHub
 
     public function createPixPayment(PixPaymentRequest $request): PaymentResponse
     {
-        $this->logger->info('Creating PIX payment', ['amount' => $request->amount]);
+        $this->logger->info('Creating PIX payment', ['amount' => $request->money->amount()]);
 
         try {
             $response = $this->gateway->createPixPayment($request);
 
             $this->eventDispatcher->dispatch(new PaymentCreated(
                 $response->transactionId,
-                $response->amount,
-                $response->currency,
+                $response->money->amount(),
+                $response->getCurrency(),
                 PaymentMethod::PIX,
                 $request->metadata ?? []
             ));
@@ -84,8 +84,8 @@ class PaymentHub
             if ($response->isSuccess()) {
                 $this->eventDispatcher->dispatch(new PaymentCompleted(
                     $response->transactionId,
-                    $response->amount,
-                    $response->currency,
+                    $response->money->amount(),
+                    $response->getCurrency(),
                     $response->status,
                     $request->metadata ?? []
                 ));
@@ -114,15 +114,15 @@ class PaymentHub
 
     public function createCreditCardPayment(CreditCardPaymentRequest $request): PaymentResponse
     {
-        $this->logger->info('Creating credit card payment', ['amount' => $request->amount]);
+        $this->logger->info('Creating credit card payment', ['amount' => $request->money->amount()]);
 
         try {
             $response = $this->gateway->createCreditCardPayment($request);
 
             $this->eventDispatcher->dispatch(new PaymentCreated(
                 $response->transactionId,
-                $response->amount,
-                $response->currency,
+                $response->money->amount(),
+                $response->getCurrency(),
                 PaymentMethod::CREDIT_CARD,
                 $request->metadata ?? []
             ));
@@ -130,16 +130,16 @@ class PaymentHub
             if ($response->isSuccess()) {
                 $this->eventDispatcher->dispatch(new PaymentCompleted(
                     $response->transactionId,
-                    $response->amount,
-                    $response->currency,
+                    $response->money->amount(),
+                    $response->getCurrency(),
                     $response->status,
                     $request->metadata ?? []
                 ));
             } elseif ($response->isFailed()) {
                 $this->eventDispatcher->dispatch(new PaymentFailed(
                     $response->transactionId,
-                    $response->amount,
-                    $response->currency,
+                    $response->money->amount(),
+                    $response->getCurrency(),
                     $response->status,
                     $response->message ?? 'Payment failed',
                     $request->metadata ?? []
@@ -174,7 +174,7 @@ class PaymentHub
 
     public function createDebitCardPayment(DebitCardPaymentRequest $request): PaymentResponse
     {
-        $this->logger->info('Creating debit card payment', ['amount' => $request->amount]);
+        $this->logger->info('Creating debit card payment', ['amount' => $request->money->amount()]);
 
         try {
             $response = $this->gateway->createDebitCardPayment($request);
@@ -190,7 +190,7 @@ class PaymentHub
 
     public function createBoleto(BoletoPaymentRequest $request): PaymentResponse
     {
-        $this->logger->info('Creating boleto', ['amount' => $request->amount]);
+        $this->logger->info('Creating boleto', ['amount' => $request->money->amount()]);
 
         try {
             $response = $this->gateway->createBoleto($request);
@@ -216,7 +216,7 @@ class PaymentHub
 
     public function createSubscription(SubscriptionRequest $request): SubscriptionResponse
     {
-        $this->logger->info('Creating subscription', ['amount' => $request->amount]);
+        $this->logger->info('Creating subscription', ['amount' => $request->money->amount()]);
 
         try {
             $response = $this->gateway->createSubscription($request);
@@ -275,7 +275,7 @@ class PaymentHub
             $this->eventDispatcher->dispatch(new PaymentRefunded(
                 $request->transactionId,
                 $response->refundId,
-                $response->amount,
+                $response->money->amount(),
                 'BRL',
                 $request->reason ?? 'Refund requested'
             ));

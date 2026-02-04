@@ -27,8 +27,8 @@ use IsraelNogueira\PaymentHub\DataObjects\Responses\EscrowResponse;
 use IsraelNogueira\PaymentHub\DataObjects\Responses\PaymentLinkResponse;
 use IsraelNogueira\PaymentHub\DataObjects\Responses\CustomerResponse;
 use IsraelNogueira\PaymentHub\DataObjects\Responses\BalanceResponse;
-
 class FakeBankGateway implements PaymentGatewayInterface
+// class FakeBankGateway implements PaymentGatewayInterface
 {
     private array $transactions = [];
     private float $balance = 10000.00;
@@ -40,17 +40,17 @@ class FakeBankGateway implements PaymentGatewayInterface
         $this->transactions[$transactionId] = [
             'type' => 'pix',
             'status' => 'approved',
-            'amount' => $request->amount,
+            'amount' => $request->money->amount(),
             'qr_code' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
             'qr_code_text' => '00020126330014BR.GOV.BCB.PIX0111' . $transactionId,
         ];
 
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: $transactionId,
             status: 'approved',
-            amount: $request->amount,
-            currency: $request->currency,
+            amount: $request->money->amount(),
+            currency: $request->money->currency()->value,
             message: 'PIX payment created successfully',
             rawResponse: $this->transactions[$transactionId],
             metadata: $request->metadata
@@ -74,19 +74,19 @@ class FakeBankGateway implements PaymentGatewayInterface
         $this->transactions[$transactionId] = [
             'type' => 'credit_card',
             'status' => 'approved',
-            'amount' => $request->amount,
+            'amount' => $request->money->amount(),
             'installments' => $request->installments,
         ];
 
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: $transactionId,
             status: 'approved',
-            amount: $request->amount,
-            currency: $request->currency,
+            amount: $request->money->amount(),
+            currency: $request->money->currency()->value,
             message: 'Credit card payment approved',
             rawResponse: $this->transactions[$transactionId],
-            metadata: $request->metadata
+            metadata: $request->metadata ?? null
         );
     }
 
@@ -97,10 +97,10 @@ class FakeBankGateway implements PaymentGatewayInterface
 
     public function capturePreAuthorization(string $transactionId, ?float $amount = null): PaymentResponse
     {
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: $transactionId,
-            status: 'captured',
+            status: 'approved',
             amount: $amount,
             currency: 'BRL',
             message: 'Pre-authorization captured',
@@ -110,7 +110,7 @@ class FakeBankGateway implements PaymentGatewayInterface
 
     public function cancelPreAuthorization(string $transactionId): PaymentResponse
     {
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: $transactionId,
             status: 'cancelled',
@@ -125,12 +125,12 @@ class FakeBankGateway implements PaymentGatewayInterface
     {
         $transactionId = 'FAKE_DC_' . uniqid();
         
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: $transactionId,
             status: 'approved',
-            amount: $request->amount,
-            currency: $request->currency,
+            amount: $request->money->amount(),
+            currency: $request->money->currency()->value,
             message: 'Debit card payment approved',
             rawResponse: ['type' => 'debit_card']
         );
@@ -143,17 +143,17 @@ class FakeBankGateway implements PaymentGatewayInterface
         $this->transactions[$transactionId] = [
             'type' => 'boleto',
             'status' => 'pending',
-            'amount' => $request->amount,
+            'amount' => $request->money->amount(),
             'barcode' => '34191.79001 01043.510047 91020.150008 1 84460000002000',
             'url' => 'https://fakebank.com/boleto/' . $transactionId,
         ];
 
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: $transactionId,
             status: 'pending',
-            amount: $request->amount,
-            currency: $request->currency,
+            amount: $request->money->amount(),
+            currency: $request->money->currency()->value,
             message: 'Boleto created successfully',
             rawResponse: $this->transactions[$transactionId]
         );
@@ -166,7 +166,7 @@ class FakeBankGateway implements PaymentGatewayInterface
 
     public function cancelBoleto(string $transactionId): PaymentResponse
     {
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: $transactionId,
             status: 'cancelled',
@@ -260,7 +260,8 @@ class FakeBankGateway implements PaymentGatewayInterface
             success: true,
             refundId: 'FAKE_REFUND_' . uniqid(),
             transactionId: $request->transactionId,
-            amount: $request->amount,
+            amount: $request->money->amount()
+,
             status: 'refunded',
             message: 'Refund processed',
             rawResponse: []
@@ -287,10 +288,10 @@ class FakeBankGateway implements PaymentGatewayInterface
 
     public function disputeChargeback(string $chargebackId, array $evidence): PaymentResponse
     {
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: $chargebackId,
-            status: 'under_review',
+            status: 'pending',
             amount: null,
             currency: 'BRL',
             message: 'Chargeback dispute submitted',
@@ -300,11 +301,12 @@ class FakeBankGateway implements PaymentGatewayInterface
 
     public function createSplitPayment(SplitPaymentRequest $request): PaymentResponse
     {
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: 'FAKE_SPLIT_' . uniqid(),
             status: 'approved',
-            amount: $request->amount,
+            amount: $request->money->amount()
+,
             currency: 'BRL',
             message: 'Split payment created',
             rawResponse: []
@@ -431,7 +433,8 @@ class FakeBankGateway implements PaymentGatewayInterface
         return new EscrowResponse(
             success: true,
             escrowId: 'FAKE_ESCROW_' . uniqid(),
-            amount: $request->amount,
+            amount: $request->money->amount()
+,
             status: 'held',
             message: 'Amount held in escrow',
             rawResponse: []
@@ -479,7 +482,8 @@ class FakeBankGateway implements PaymentGatewayInterface
         return new TransferResponse(
             success: true,
             transferId: 'FAKE_TRANSFER_' . uniqid(),
-            amount: $request->amount,
+            amount: $request->money->amount()
+,
             status: 'completed',
             message: 'Transfer completed',
             rawResponse: []
@@ -491,7 +495,8 @@ class FakeBankGateway implements PaymentGatewayInterface
         return new TransferResponse(
             success: true,
             transferId: 'FAKE_TRANSFER_' . uniqid(),
-            amount: $request->amount,
+            amount: $request->money->amount()
+,
             status: 'scheduled',
             message: 'Transfer scheduled',
             rawResponse: ['scheduled_date' => $date]
@@ -639,7 +644,7 @@ class FakeBankGateway implements PaymentGatewayInterface
 
     public function anticipateReceivables(array $transactionIds): PaymentResponse
     {
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: 'FAKE_ANTICIPATION_' . uniqid(),
             status: 'processing',
