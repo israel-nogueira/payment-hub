@@ -703,7 +703,7 @@ $copiaECola = $hub->getPixCopyPaste($transactionId);
 
 Problemas com o gateway? Abra uma issue:
 - 🐛 [GitHub Issues](https://github.com/israel-nogueira/payment-hub/issues)
-- 📧 Email: israel.nogueira@gmail.com
+- 📧 Email: contato@israelnogueira.com
 
 ---
 

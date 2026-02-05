@@ -449,7 +449,7 @@ switch ($event->type) {
 ## 💬 Suporte
 
 Para questões específicas do Payment Hub:
-- 📧 Email: israel.nogueira@gmail.com
+- 📧 Email: contato@israelnogueira.com
 - 🐛 Issues: [GitHub Issues](https://github.com/israel-nogueira/payment-hub/issues)
 
 Para questões da Pagar.me:

@@ -9,9 +9,52 @@
 
 **A biblioteca PHP mais simples e elegante para pagamentos no Brasil** 🇧🇷
 
-[Instalação](#-instalação) • [Início Rápido](#-início-rápido) • [Documentação](#-documentação) • [Exemplos](#-exemplos)
+### 📚 Navegação Rápida
+[Instalação](#-instalação) • [Conceitos](docs/core-concepts.md) • [Cartão](docs/credit-card.md) • [PIX](docs/pix.md) • [Boleto](docs/boleto.md) • [Assinaturas](docs/subscriptions.md) • [Money](docs/money.md) • [Enums](docs/enums.md) • [FAQ](docs/faq.md)
 
 </div>
+
+---
+
+## 🎯 O Que é o Payment Hub?
+
+**Payment Hub** é a solução definitiva para processar pagamentos em PHP sem dor de cabeça. Esqueça integrações complexas, APIs diferentes e código verboso. Com uma **interface única e padronizada**, você integra múltiplos gateways de pagamento e pode trocar entre eles mudando apenas 1 linha de código.
+
+### 💡 Comece testando AGORA - Sem precisar de API keys!
+
+O Payment Hub inclui o **FakeBankGateway** - um gateway de pagamento simulado que implementa **TODAS as funcionalidades** da biblioteca. Você pode desenvolver, testar e validar toda sua lógica de negócio **sem depender de APIs externas, sem sandbox, sem credenciais**. Quando estiver pronto, basta trocar para um gateway real e tudo continua funcionando!
+
+**🚀 Perfeito para:**
+- Desenvolver sua aplicação offline
+- Testar fluxos completos sem custos
+- Criar testes automatizados confiáveis
+- Validar sua lógica antes de integrar APIs reais
+- Demonstrações e protótipos
+
+---
+
+## 🚀 Gateways Suportados
+
+| Gateway | Status | Métodos Suportados | Documentação |
+|---------|--------|---------|--------------|
+| 🧪 **FakeBankGateway** | ✅ Pronto | **TODOS** os métodos (PIX, Cartões, Boleto, Assinaturas, Split, Escrow, etc.) - **Perfeito para desenvolvimento e testes SEM precisar de API real!** | [📖 Docs](src/Gateways/FakeBank/FakeBankGateway.md) |
+| 🟣 **Asaas** | ✅ Pronto | PIX, Cartão de Crédito, Boleto, Assinaturas, Split, Sub-contas, Wallets, Escrow, Transferências, Clientes, Refunds | [📖 Docs](src/Gateways/Asaas/AsaasGateway.md) |
+| 🟡 **Pagar.me** | ✅ Pronto | PIX, Cartão Crédito/Débito, Boleto, Assinaturas, Split, Recipients, Clientes, Refunds, Pre-auth, Webhooks | [📖 Docs](src/Gateways/PagarMe/PagarMeGateway.md) |
+| 🌎 **EBANX** | ✅ Pronto | PIX, Cartão Crédito/Débito, Boleto, Recorrência, Refunds, Pre-auth, Multi-país (7 países) | [📖 Docs](src/Gateways/Ebanx/EbanxGateway.md) |
+| 💚 **MercadoPago** | ✅ Pronto | PIX, Cartão Crédito/Débito, Boleto, Assinaturas, Split, Clientes, Refunds, Pre-auth | [📖 Docs](src/Gateways/MercadoPago/MercadoPagoGateway.md) |
+| 🟠 **PagSeguro** | ✅ Pronto | PIX, Cartão Crédito/Débito, Boleto, Assinaturas, Split, Clientes, Refunds, Pre-auth | [📖 Docs](src/Gateways/PagSeguro/PagSeguroGateway.md) |
+| 🔴 **Adyen** | ✅ Pronto | PIX, Cartão Crédito/Débito, Boleto, Payment Links, Refunds, Pre-auth/Capture | [📖 Docs](src/Gateways/Adyen/AdyenGateway.md) |
+| 🔵 **Stripe** | ✅ Pronto | Cartão de Crédito, Assinaturas, Payment Intents, Clientes, Refunds, Pre-auth/Capture | [📖 Docs](src/Gateways/Stripe/StripeGateway.md) |
+| 💙 **PayPal** | ✅ Pronto | Cartão de Crédito, Assinaturas, PayPal Checkout, Refunds, Pre-auth/Capture | [📖 Docs](src/Gateways/PayPal/PayPalGateway.md) |
+| 🟢 **EtherGlobalAssets** | ✅ Pronto | PIX (apenas) | [📖 Docs](src/Gateways/EtherGlobalAssets/EtherGlobalAssets.md) |
+
+> 🧪 **FakeBankGateway**: Gateway simulado completo que funciona **SEM internet, SEM API keys, SEM sandbox**. Use para desenvolver toda sua aplicação localmente e só conecte com APIs reais quando estiver pronto para produção!
+> 
+> 📝 **Nota**: Gateways brasileiros (Asaas, Pagar.me, MercadoPago, PagSeguro, EBANX) suportam PIX e Boleto. Gateways internacionais (Stripe, PayPal, Adyen) não suportam esses métodos nativos do Brasil.
+> 
+> 🌎 **EBANX**: Gateway especializado em pagamentos internacionais para América Latina (7 países).
+
+**📢 Quer contribuir?** Implemente seu próprio gateway! [Veja como →](docs/creating-gateway.md)
 
 ---
 
@@ -35,12 +78,13 @@ $payment = $hub->createPixPayment(
 
 ### ✨ Características
 
-- 🚀 **Zero configuração inicial** - comece testando sem APIs reais
+- 🚀 **Zero configuração inicial** - comece testando com FakeBankGateway (sem APIs)
+- 🧪 **FakeBankGateway incluído** - gateway simulado completo para desenvolvimento
 - 🎨 **Type-safe** - PHP 8.3+ com tipos estritos
 - 💰 **ValueObjects** - Money, CPF, CardNumber validados automaticamente
 - 🔄 **Fácil migração** - troque de gateway sem alterar código
-- 🧪 **Gateway Fake** - teste sem depender de APIs externas
 - 🇧🇷 **100% em português** - documentação e código
+- 🛡️ **Pronto para produção** - validações robustas e tratamento de erros
 
 ### 🎯 Funcionalidades Completas
 
@@ -114,16 +158,29 @@ composer require israel-nogueira/payment-hub
 
 ## ⚡ Início Rápido
 
-### 1️⃣ Testando sem API (Gateway Fake)
+### 1️⃣ Testando sem API (FakeBankGateway)
 
-Comece desenvolvendo **sem precisar de credenciais reais**:
+**🎯 O que é o FakeBankGateway?**
+
+É um gateway de pagamento **simulado** que vem incluído na biblioteca. Ele:
+- ✅ Funciona **offline** (sem internet)
+- ✅ Não precisa de **credenciais ou API keys**
+- ✅ Implementa **TODAS** as funcionalidades (PIX, cartões, boleto, etc.)
+- ✅ Retorna dados **realistas** como se fosse uma API real
+- ✅ Perfeito para **desenvolver e testar** sua aplicação
+
+**💡 Use para:**
+- Desenvolver sem depender de sandbox
+- Criar testes automatizados confiáveis
+- Validar fluxos de pagamento antes de ir para produção
+- Demonstrações e protótipos
 
 ```php
 use IsraelNogueira\PaymentHub\PaymentHub;
 use IsraelNogueira\PaymentHub\Gateways\FakeBankGateway;
 use IsraelNogueira\PaymentHub\DataObjects\Requests\PixPaymentRequest;
 
-// Cria o hub com gateway fake (não precisa de API)
+// Cria o hub com FakeBankGateway (NÃO precisa de API real!)
 $hub = new PaymentHub(new FakeBankGateway());
 
 // Faz um pagamento PIX de teste
@@ -140,7 +197,7 @@ echo "✅ Pagamento criado: {$payment->transactionId}\n";
 echo "💰 Valor: {$payment->getFormattedAmount()}\n";
 echo "📊 Status: {$payment->getStatusLabel()}\n";
 
-// Pega QR Code do PIX
+// Pega QR Code do PIX (funcionando mesmo offline!)
 $qrCode = $hub->getPixQrCode($payment->transactionId);
 ```
 
@@ -150,6 +207,8 @@ $qrCode = $hub->getPixQrCode($payment->transactionId);
 💰 Valor: R$ 150,00
 📊 Status: Aprovado
 ```
+
+> 🚀 **Pronto!** Você já está processando pagamentos sem precisar de API. Quando quiser usar um gateway real, basta trocar `FakeBankGateway()` por `AsaasGateway()` ou outro.
 
 ---
 
@@ -394,44 +453,10 @@ $hub = new PaymentHub(new PagarMeGateway(
     sandbox: true
 ));
 
-// Ou com EtherGlobalAssets:
-$hub = new PaymentHub(new EtherGlobalAssets(
-    apiKey: 'sua-api-key-aqui',
-    sandbox: true
-));
-
-// Ou com Adyen:
-$hub = new PaymentHub(new AdyenGateway(
-    apiKey: 'sua-api-key-aqui',
-    merchantAccount: 'sua-merchant-account',
-    sandbox: true
-));
-
 // Todo o resto do código continua igual! 🎉
 ```
 
-### Gateways Suportados
-
-| Gateway | Status | Métodos Suportados | Documentação |
-|---------|--------|---------|--------------|
-| 🧪 **FakeBankGateway** | ✅ Pronto | **Todos** (PIX, Cartão Crédito/Débito, Boleto, Assinaturas, Split, Escrow, Wallets, Sub-contas, Transferências, Antifraude) | [📖 Docs](src/Gateways/FakeBank/FakeBankGateway.md) |
-| 🟣 **Asaas** | ✅ Pronto | PIX, Cartão de Crédito, Boleto, Assinaturas, Split, Sub-contas, Wallets, Escrow, Transferências, Clientes, Refunds | [📖 Docs](src/Gateways/Asaas/AsaasGetway.md) |
-| 🟡 **Pagar.me** | ✅ Pronto | PIX, Cartão Crédito/Débito, Boleto, Assinaturas, Split, Recipients, Clientes, Refunds, Pre-auth, Webhooks | [📖 Docs](src/Gateways/PagarMe/PagarMeGateway.md) |
-| 🌎 **EBANX** | ✅ Pronto | PIX, Cartão Crédito/Débito, Boleto, Recorrência, Refunds, Pre-auth, Multi-país (7 países) | [📖 Docs](src/Gateways/Ebanx/EbanxGateway.md) |
-| 💚 **MercadoPago** | ✅ Pronto | PIX, Cartão Crédito/Débito, Boleto, Assinaturas, Split, Clientes, Refunds, Pre-auth | [📖 Docs](src/Gateways/MercadoPago/MercadoPagoGateway.md) |
-| 🟠 **PagSeguro** | ✅ Pronto | PIX, Cartão Crédito/Débito, Boleto, Assinaturas, Split, Clientes, Refunds, Pre-auth | [📖 Docs](src/Gateways/PagSeguro/PagSeguroGateway.md) |
-| 🔴 **Adyen** | ✅ Pronto | PIX, Cartão Crédito/Débito, Boleto, Payment Links, Refunds, Pre-auth/Capture | [📖 Docs](src/Gateways/Adyen/AdyenGateway.md) |
-| 🔵 **Stripe** | ✅ Pronto | Cartão de Crédito, Assinaturas, Payment Intents, Clientes, Refunds, Pre-auth/Capture | [📖 Docs](src/Gateways/Stripe/StripeGateway.md) |
-| 💙 **PayPal** | ✅ Pronto | Cartão de Crédito, Assinaturas, PayPal Checkout, Refunds, Pre-auth/Capture | [📖 Docs](src/Gateways/PayPal/PayPalGateway.md) |
-| 🟢 **EtherGlobalAssets** | ✅ Pronto | PIX (apenas) | [📖 Docs](src/Gateways/EtherGlobalAssets/EtherGlobalAssets.md) |
-
-> 💡 **O FakeBankGateway implementa TODAS as funcionalidades da biblioteca** - perfeito para desenvolvimento e testes!
-> 
-> 📝 **Nota**: Gateways brasileiros (Asaas, Pagar.me, MercadoPago, PagSeguro, EBANX) suportam PIX e Boleto. Gateways internacionais (Stripe, PayPal, Adyen) não suportam esses métodos nativos do Brasil.
-> 
-> 🌎 **EBANX**: Gateway especializado em pagamentos internacionais para América Latina (7 países).
-
-**📢 Quer contribuir?** Implemente seu próprio gateway! [Veja como →](docs/creating-gateway.md)
+[🔝 Ver todos os gateways suportados](#-gateways-suportados)
 
 ---
 
@@ -513,7 +538,7 @@ Este projeto está sob a licença MIT. Veja [LICENSE](LICENSE) para mais detalhe
 
 ## 💬 Suporte
 
-- 📧 Email: israel.nogueira@gmail.com
+- 📧 Email: contato@israelnogueira.com
 - 🐛 Issues: [GitHub Issues](https://github.com/israel-nogueira/payment-hub/issues)
 - 💬 Discussões: [GitHub Discussions](https://github.com/israel-nogueira/payment-hub/discussions)
 

@@ -2,7 +2,7 @@
   "info": {
     "name": "PaymentHub - Complete API Collection",
     "_postman_id": "payment-hub-collection-v1",
-    "description": "Complete collection for PaymentHub - Unified Payment Gateway Adapter\n\nAuthor: Israel Nogueira\nEmail: israel@feats.com.br\nGitHub: https://github.com/israel-nogueira/payment-hub",
+    "description": "Complete collection for PaymentHub - Unified Payment Gateway Adapter\n\nAuthor: Israel Nogueira\nEmail: contato@israelnogueira.com\nGitHub: https://github.com/israel-nogueira/payment-hub",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [

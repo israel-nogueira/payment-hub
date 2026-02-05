@@ -11,29 +11,42 @@
 
 ## 📚 Documentação Completa
 
-**[Acesse a documentação completa →](docs/README.md)**
-
 ### 🚀 Início Rápido
-- [Instalação](docs/getting-started/installation.md) - Configure em 5 minutos
-- [Primeiro Pagamento](docs/getting-started/first-payment.md) - PIX em 2 minutos
-- [Conceitos Básicos](docs/getting-started/core-concepts.md) - Entenda a arquitetura
-- [Configuração](docs/getting-started/configuration.md) - Ambiente de produção
+- [Instalação](installation.md) - Configure em 5 minutos
+- [Primeiro Pagamento](first-payment.md) - PIX em 2 minutos
+- [Conceitos Básicos](core-concepts.md) - Entenda a arquitetura
+- [Configuração](configuration.md) - Ambiente de produção
 
-### 📖 Guias de Uso
-- [PIX](docs/guides/pix.md) - QR Code e Copia e Cola
-- [Cartão de Crédito](docs/guides/credit-card.md) - Parcelamento e Tokenização
-- [Boleto](docs/guides/boleto.md) - Juros e Multa
-- [Money](docs/guides/money.md) - Valores monetários seguros
-- [Enums](docs/guides/enums.md) - Type-safety completo
+### 📖 Guias de Pagamento
+- [PIX](pix.md) - QR Code e Copia e Cola
+- [Cartão de Crédito](credit-card.md) - Parcelamento e Tokenização
+- [Cartão de Débito](debit-card.md) - Débito online
+- [Boleto](boleto.md) - Juros e Multa
 
-### 🎯 Exemplos Práticos
-- [E-commerce Completo](docs/examples/ecommerce.md) - Checkout ponta a ponta
-- [Marketplace](docs/examples/marketplace.md) - Split de pagamento
-- [SaaS](docs/examples/saas.md) - Assinaturas recorrentes
+### 💰 Recursos Avançados
+- [Assinaturas](subscriptions.md) - Recorrência e trial
+- [Split de Pagamento](split-payments.md) - Marketplace
+- [Sub-contas](sub-accounts.md) - Multi-tenant
+- [Webhooks](webhooks.md) - Notificações automáticas
+
+### 🔧 Componentes
+- [Money](money.md) - Valores monetários seguros
+- [Enums](enums.md) - Type-safety completo
+- [Value Objects](value-objects.md) - CPF, CNPJ, Email validados
+- [Error Handling](error-handling.md) - Tratamento de erros
+
+### 🏗️ Para Desenvolvedores
+- [Criar Seu Gateway](creating-gateway.md) - Implemente novos gateways
+- [Migração](migration.md) - Atualize para novas versões
+- [E-commerce Completo](ecommerce.md) - Exemplo real
 
 ### 🆘 Ajuda
-- [FAQ](docs/help/faq.md) - Perguntas frequentes
-- [Troubleshooting](docs/help/troubleshooting.md) - Resolva problemas
+- [FAQ](faq.md) - Perguntas frequentes
+- [Troubleshooting](troubleshooting.md) - Resolva problemas
+- [Contribuindo](contributing.md) - Como contribuir
+- [Changelog](CHANGELOG.md) - Histórico de versões
+- [Segurança](SECURITY.md) - Reportar vulnerabilidades
+- [Código de Conduta](CODE_OF_CONDUCT.md) - Nossas regras
 
 ---
 
@@ -93,7 +106,7 @@ if ($response->isSuccess()) {
 }
 ```
 
-**[Ver exemplo completo →](docs/getting-started/first-payment.md)**
+**[Ver exemplo completo →](first-payment.md)**
 
 ---
 
@@ -129,7 +142,7 @@ $total = $price->subtract($discount);
 echo $total->formatted();  // R$ 90,00
 ```
 
-**[Saiba mais sobre ValueObjects →](docs/guides/value-objects.md)**
+**[Saiba mais sobre ValueObjects →](value-objects.md)**
 
 ---
 
@@ -177,7 +190,7 @@ if ($response->status->isPaid()) {
 }
 ```
 
-**[Guia completo de PIX →](docs/guides/pix.md)**
+**[Guia completo de PIX →](pix.md)**
 
 ### Cartão de Crédito Parcelado
 
@@ -201,7 +214,7 @@ if ($response->isSuccess()) {
 }
 ```
 
-**[Guia completo de Cartão →](docs/guides/credit-card.md)**
+**[Guia completo de Cartão →](credit-card.md)**
 
 ### Trabalhando com Money
 
@@ -225,7 +238,7 @@ foreach ($installments as $i => $value) {
 }
 ```
 
-**[Guia completo de Money →](docs/guides/money.md)**
+**[Guia completo de Money →](money.md)**
 
 ---
 
@@ -269,7 +282,7 @@ echo $email->value();   // joao@email.com
 echo $email->domain();  // email.com
 ```
 
-**[Mais sobre validações →](docs/guides/value-objects.md)**
+**[Mais sobre validações →](value-objects.md)**
 
 ---
 
@@ -307,7 +320,7 @@ echo $currency->name();      // Real Brasileiro
 echo $currency->format(1234.56);  // R$ 1.234,56
 ```
 
-**[Guia completo de Enums →](docs/guides/enums.md)**
+**[Guia completo de Enums →](enums.md)**
 
 ---
 
@@ -342,7 +355,7 @@ try {
 }
 ```
 
-**[Guia de tratamento de erros →](docs/guides/error-handling.md)**
+**[Guia de tratamento de erros →](error-handling.md)**
 
 ---
 
@@ -359,7 +372,7 @@ composer test:coverage
 composer analyse
 ```
 
-**[Guia de testes →](docs/advanced/testing.md)**
+**[Guia de testes →](#)**
 
 ---
 
@@ -383,24 +396,7 @@ class MeuGateway implements PaymentGatewayInterface
 }
 ```
 
-**[Guia completo →](docs/advanced/creating-gateway.md)**
-
----
-
-## 🎯 Gateways Planejados
-
-- [ ] **Stripe**
-- [ ] **PagarMe**
-- [ ] **MercadoPago**
-- [ ] **Asaas**
-- [ ] **PagSeguro**
-- [ ] **PayPal**
-- [ ] **Iugu**
-- [ ] **Vindi**
-- [ ] **Cielo**
-- [ ] **Rede**
-
-**Quer contribuir com um adapter?** Abra um PR! 🚀
+**[Guia completo →](creating-gateway.md)**
 
 ---
 
@@ -414,7 +410,7 @@ Contribuições são muito bem-vindas!
 4. Push para a branch (`git push origin feature/NovoGateway`)
 5. Abra um Pull Request
 
-**[Guia de contribuição →](docs/help/contributing.md)**
+**[Guia de contribuição →](contributing.md)**
 
 ---
 
@@ -427,7 +423,7 @@ MIT License - veja [LICENSE](LICENSE) para mais detalhes.
 ## 👨‍💻 Autor
 
 **Israel Nogueira**  
-📧 israel@feats.com.br  
+📧 contato@israelnogueira.com  
 🐙 [GitHub](https://github.com/israel-nogueira)
 
 ---
@@ -435,10 +431,10 @@ MIT License - veja [LICENSE](LICENSE) para mais detalhes.
 ## 🔗 Links Úteis
 
 - 📦 [Packagist](https://packagist.org/packages/israel-nogueira/payment-hub)
-- 📖 [Documentação Completa](docs/README.md)
+- 📖 [README Principal](../README.md)
 - 🐛 [Reportar Bug](https://github.com/israel-nogueira/payment-hub/issues)
 - 💬 [Discussões](https://github.com/israel-nogueira/payment-hub/discussions)
-- ❓ [FAQ](docs/help/faq.md)
+- ❓ [FAQ](faq.md)
 
 ---
 

@@ -298,7 +298,7 @@ Encontrou bugs ou quer melhorias?
 ## 📧 Suporte
 
 **Autor:** Israel Nogueira  
-**Email:** israel@feats.com.br  
+**Email:** contato@israelnogueira.com  
 **GitHub:** https://github.com/israel-nogueira/payment-hub
 
 ---

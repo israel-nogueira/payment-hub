@@ -631,7 +631,7 @@ try {
 
 Problemas com o gateway? Abra uma issue:
 - 🐛 [GitHub Issues](https://github.com/israel-nogueira/payment-hub/issues)
-- 📧 Email: israel.nogueira@gmail.com
+- 📧 Email: contato@israelnogueira.com
 
 Para suporte Adyen:
 - 📞 [Suporte Adyen](https://www.adyen.com/contact)
