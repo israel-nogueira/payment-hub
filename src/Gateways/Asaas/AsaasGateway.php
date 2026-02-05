@@ -274,7 +274,7 @@ class AsaasGateway implements PaymentGatewayInterface
         ];
 
         if ($request->customerDocument) {
-            $customerData['cpfCnpj'] = preg_replace('/\D/', '', $request->customerDocument);
+            $customerData['cpfCnpj'] = $request->customerDocument->value();
         }
 
         $customerResponse = $this->request('POST', '/customers', $customerData);
@@ -313,7 +313,7 @@ class AsaasGateway implements PaymentGatewayInterface
             $paymentData['creditCardHolderInfo'] = [
                 'name' => $request->customerName ?? $request->cardHolderName,
                 'email' => $request->customerEmail?->value() ?? 'cliente@example.com',
-                'cpfCnpj' => preg_replace('/\D/', '', $request->customerDocument ?? '00000000000'),
+                'cpfCnpj' => ($request->customerDocument?->value() ?? '00000000000'),
                 'postalCode' => preg_replace('/\D/', '', $request->billingAddress['zipcode'] ?? '00000000'),
                 'addressNumber' => $request->billingAddress['number'] ?? 'S/N',
                 'phone' => preg_replace('/\D/', '', $request->billingAddress['phone'] ?? '0000000000'),
@@ -400,11 +400,11 @@ class AsaasGateway implements PaymentGatewayInterface
         // Criar/buscar cliente
         $customerData = [
             'name' => $request->customerName ?? 'Cliente',
-            'email' => $request->customerEmail ?? 'cliente@example.com',
+            'email' => $request->customerEmail?->value() ?? 'cliente@example.com',
         ];
 
         if ($request->customerDocument) {
-            $customerData['cpfCnpj'] = preg_replace('/\D/', '', $request->customerDocument);
+            $customerData['cpfCnpj'] = $request->customerDocument->value();
         }
 
         if ($request->customerAddress) {

@@ -1,7 +1,4 @@
 <?php
-
-require_once 'vendor/autoload.php';
-
 use IsraelNogueira\PaymentHub\PaymentHub;
 use IsraelNogueira\PaymentHub\Gateways\EtherGlobalAssetsGateway;
 use IsraelNogueira\PaymentHub\DataObjects\Requests\PixPaymentRequest;

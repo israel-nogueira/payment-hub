@@ -381,23 +381,31 @@ Quando estiver pronto, **troque apenas 1 linha**:
 // Era assim (fake):
 $hub = new PaymentHub(new FakeBankGateway());
 
-// Agora é assim (real):
-$hub = new PaymentHub(new MercadoPagoGateway([
-    'access_token' => 'SEU_TOKEN_AQUI'
-]));
+// Agora é assim (Asaas):
+$hub = new PaymentHub(new AsaasGateway(
+    apiKey: 'sua-api-key-aqui',
+    sandbox: true
+));
+
+// Ou com EtherGlobalAssets:
+$hub = new PaymentHub(new EtherGlobalAssets(
+    apiKey: 'sua-api-key-aqui',
+    sandbox: true
+));
 
 // Todo o resto do código continua igual! 🎉
 ```
 
 ### Gateways Suportados
 
-| Gateway | Status | Métodos Suportados |
-|---------|--------|---------|
-| 🧪 **FakeBankGateway** | ✅ Pronto | **Todos** (PIX, Cartão, Boleto, Assinaturas, Split, Escrow, Wallets, Sub-contas) |
-| 💚 MercadoPago | 🚧 Em breve | PIX, Cartão, Boleto, Split |
-| 🔵 PagSeguro | 🚧 Em breve | PIX, Cartão, Boleto |
-| 🟣 Asaas | 🚧 Em breve | PIX, Cartão, Boleto, Assinaturas, Split |
-| ⚫ Stripe | 🚧 Em breve | Cartão, Assinaturas |
+| Gateway | Status | Métodos Suportados | Documentação |
+|---------|--------|---------|--------------|
+| 🧪 **FakeBankGateway** | ✅ Pronto | **Todos** (PIX, Cartão, Boleto, Assinaturas, Split, Escrow, Wallets, Sub-contas) | [📖 Docs](src/Gateways/FakeBank/FakeBankGateway.md) |
+| 🟣 **Asaas** | ✅ Pronto | PIX, Cartão, Boleto, Assinaturas, Split, Sub-contas, Wallets, Escrow, Transferências | [📖 Docs](src/Gateways/Asaas/AsaasGetway.md) |
+| 🟢 **EtherGlobalAssets** | ✅ Pronto | PIX, Cartão, Boleto | [📖 Docs](src/Gateways/EtherGlobalAssets/EtherGlobalAssets.md) |
+| 💚 MercadoPago | 🚧 Em breve | PIX, Cartão, Boleto, Split | - |
+| 🔵 PagSeguro | 🚧 Em breve | PIX, Cartão, Boleto | - |
+| ⚫ Stripe | 🚧 Em breve | Cartão, Assinaturas | - |
 
 > 💡 **O FakeBankGateway implementa TODAS as funcionalidades da biblioteca** - perfeito para desenvolvimento e testes!
 

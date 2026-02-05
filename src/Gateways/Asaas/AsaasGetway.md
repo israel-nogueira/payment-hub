@@ -133,7 +133,7 @@ $request = PixPaymentRequest::create(
     customerEmail: 'joao@email.com',
     customerDocument: '123.456.789-00',
     description: 'Pagamento de serviço',
-    expirationMinutes: 30
+    expiresInMinutes: 30
 );
 
 $response = $hub->createPixPayment($request);
