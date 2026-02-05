@@ -387,6 +387,13 @@ $hub = new PaymentHub(new AsaasGateway(
     sandbox: true
 ));
 
+// Ou com Pagar.me:
+$hub = new PaymentHub(new PagarMeGateway(
+    secretKey: 'sk_test_xxxxxxxxxxxxxx',
+    publicKey: 'pk_test_xxxxxxxxxxxxxx',
+    sandbox: true
+));
+
 // Ou com EtherGlobalAssets:
 $hub = new PaymentHub(new EtherGlobalAssets(
     apiKey: 'sua-api-key-aqui',
@@ -409,6 +416,8 @@ $hub = new PaymentHub(new AdyenGateway(
 |---------|--------|---------|--------------|
 | 🧪 **FakeBankGateway** | ✅ Pronto | **Todos** (PIX, Cartão Crédito/Débito, Boleto, Assinaturas, Split, Escrow, Wallets, Sub-contas, Transferências, Antifraude) | [📖 Docs](src/Gateways/FakeBank/FakeBankGateway.md) |
 | 🟣 **Asaas** | ✅ Pronto | PIX, Cartão de Crédito, Boleto, Assinaturas, Split, Sub-contas, Wallets, Escrow, Transferências, Clientes, Refunds | [📖 Docs](src/Gateways/Asaas/AsaasGetway.md) |
+| 🟡 **Pagar.me** | ✅ Pronto | PIX, Cartão Crédito/Débito, Boleto, Assinaturas, Split, Recipients, Clientes, Refunds, Pre-auth, Webhooks | [📖 Docs](src/Gateways/PagarMe/PagarMeGateway.md) |
+| 🌎 **EBANX** | ✅ Pronto | PIX, Cartão Crédito/Débito, Boleto, Recorrência, Refunds, Pre-auth, Multi-país (7 países) | [📖 Docs](src/Gateways/Ebanx/EbanxGateway.md) |
 | 💚 **MercadoPago** | ✅ Pronto | PIX, Cartão Crédito/Débito, Boleto, Assinaturas, Split, Clientes, Refunds, Pre-auth | [📖 Docs](src/Gateways/MercadoPago/MercadoPagoGateway.md) |
 | 🟠 **PagSeguro** | ✅ Pronto | PIX, Cartão Crédito/Débito, Boleto, Assinaturas, Split, Clientes, Refunds, Pre-auth | [📖 Docs](src/Gateways/PagSeguro/PagSeguroGateway.md) |
 | 🔴 **Adyen** | ✅ Pronto | PIX, Cartão Crédito/Débito, Boleto, Payment Links, Refunds, Pre-auth/Capture | [📖 Docs](src/Gateways/Adyen/AdyenGateway.md) |
@@ -418,7 +427,9 @@ $hub = new PaymentHub(new AdyenGateway(
 
 > 💡 **O FakeBankGateway implementa TODAS as funcionalidades da biblioteca** - perfeito para desenvolvimento e testes!
 > 
-> 📝 **Nota**: Gateways brasileiros (Asaas, MercadoPago, PagSeguro) suportam PIX e Boleto. Gateways internacionais (Stripe, PayPal, Adyen) não suportam esses métodos nativos do Brasil.
+> 📝 **Nota**: Gateways brasileiros (Asaas, Pagar.me, MercadoPago, PagSeguro, EBANX) suportam PIX e Boleto. Gateways internacionais (Stripe, PayPal, Adyen) não suportam esses métodos nativos do Brasil.
+> 
+> 🌎 **EBANX**: Gateway especializado em pagamentos internacionais para América Latina (7 países).
 
 **📢 Quer contribuir?** Implemente seu próprio gateway! [Veja como →](docs/creating-gateway.md)
 
