@@ -407,16 +407,18 @@ $hub = new PaymentHub(new AdyenGateway(
 
 | Gateway | Status | Métodos Suportados | Documentação |
 |---------|--------|---------|--------------|
-| 🧪 **FakeBankGateway** | ✅ Pronto | **Todos** (PIX, Cartão, Boleto, Assinaturas, Split, Escrow, Wallets, Sub-contas) | [📖 Docs](src/Gateways/FakeBank/FakeBankGateway.md) |
-| 🟣 **Asaas** | ✅ Pronto | PIX, Cartão, Boleto, Assinaturas, Split, Sub-contas, Wallets, Escrow, Transferências | [📖 Docs](src/Gateways/Asaas/AsaasGetway.md) |
-| 🟢 **EtherGlobalAssets** | ✅ Pronto | PIX, Cartão, Boleto | [📖 Docs](src/Gateways/EtherGlobalAssets/EtherGlobalAssets.md) |
-| 🔴 **Adyen** | ✅ Pronto | PIX, Cartão (Crédito/Débito), Boleto, Payment Links, Refunds | [📖 Docs](src/Gateways/Adyen/AdyenGateway.md) |
-| 🔵 **Stripe** | 🚧 Em breve | Cartão, Assinaturas, Payment Links | [📖 Docs](src/Gateways/Stripe/StripeGateway.md) |
-| 💙 **PayPal** | 🚧 Em breve | Cartão, PayPal Checkout | [📖 Docs](src/Gateways/PayPal/PayPalGateway.md) |
-| 💚 **MercadoPago** | 🚧 Em breve | PIX, Cartão, Boleto, Split | [📖 Docs](src/Gateways/MercadoPago/MercadoPagoGateway.md) |
-| 🟠 **PagSeguro** | 🚧 Em breve | PIX, Cartão, Boleto | [📖 Docs](src/Gateways/PagSeguro/PagSeguroGateway.md) |
+| 🧪 **FakeBankGateway** | ✅ Pronto | **Todos** (PIX, Cartão Crédito/Débito, Boleto, Assinaturas, Split, Escrow, Wallets, Sub-contas, Transferências, Antifraude) | [📖 Docs](src/Gateways/FakeBank/FakeBankGateway.md) |
+| 🟣 **Asaas** | ✅ Pronto | PIX, Cartão de Crédito, Boleto, Assinaturas, Split, Sub-contas, Wallets, Escrow, Transferências, Clientes, Refunds | [📖 Docs](src/Gateways/Asaas/AsaasGetway.md) |
+| 💚 **MercadoPago** | ✅ Pronto | PIX, Cartão Crédito/Débito, Boleto, Assinaturas, Split, Clientes, Refunds, Pre-auth | [📖 Docs](src/Gateways/MercadoPago/MercadoPagoGateway.md) |
+| 🟠 **PagSeguro** | ✅ Pronto | PIX, Cartão Crédito/Débito, Boleto, Assinaturas, Split, Clientes, Refunds, Pre-auth | [📖 Docs](src/Gateways/PagSeguro/PagSeguroGateway.md) |
+| 🔴 **Adyen** | ✅ Pronto | PIX, Cartão Crédito/Débito, Boleto, Payment Links, Refunds, Pre-auth/Capture | [📖 Docs](src/Gateways/Adyen/AdyenGateway.md) |
+| 🔵 **Stripe** | ✅ Pronto | Cartão de Crédito, Assinaturas, Payment Intents, Clientes, Refunds, Pre-auth/Capture | [📖 Docs](src/Gateways/Stripe/StripeGateway.md) |
+| 💙 **PayPal** | ✅ Pronto | Cartão de Crédito, Assinaturas, PayPal Checkout, Refunds, Pre-auth/Capture | [📖 Docs](src/Gateways/PayPal/PayPalGateway.md) |
+| 🟢 **EtherGlobalAssets** | ✅ Pronto | PIX (apenas) | [📖 Docs](src/Gateways/EtherGlobalAssets/EtherGlobalAssets.md) |
 
 > 💡 **O FakeBankGateway implementa TODAS as funcionalidades da biblioteca** - perfeito para desenvolvimento e testes!
+> 
+> 📝 **Nota**: Gateways brasileiros (Asaas, MercadoPago, PagSeguro) suportam PIX e Boleto. Gateways internacionais (Stripe, PayPal, Adyen) não suportam esses métodos nativos do Brasil.
 
 **📢 Quer contribuir?** Implemente seu próprio gateway! [Veja como →](docs/creating-gateway.md)
 
