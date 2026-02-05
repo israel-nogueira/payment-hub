@@ -393,6 +393,13 @@ $hub = new PaymentHub(new EtherGlobalAssets(
     sandbox: true
 ));
 
+// Ou com Adyen:
+$hub = new PaymentHub(new AdyenGateway(
+    apiKey: 'sua-api-key-aqui',
+    merchantAccount: 'sua-merchant-account',
+    sandbox: true
+));
+
 // Todo o resto do código continua igual! 🎉
 ```
 
@@ -403,9 +410,11 @@ $hub = new PaymentHub(new EtherGlobalAssets(
 | 🧪 **FakeBankGateway** | ✅ Pronto | **Todos** (PIX, Cartão, Boleto, Assinaturas, Split, Escrow, Wallets, Sub-contas) | [📖 Docs](src/Gateways/FakeBank/FakeBankGateway.md) |
 | 🟣 **Asaas** | ✅ Pronto | PIX, Cartão, Boleto, Assinaturas, Split, Sub-contas, Wallets, Escrow, Transferências | [📖 Docs](src/Gateways/Asaas/AsaasGetway.md) |
 | 🟢 **EtherGlobalAssets** | ✅ Pronto | PIX, Cartão, Boleto | [📖 Docs](src/Gateways/EtherGlobalAssets/EtherGlobalAssets.md) |
-| 💚 MercadoPago | 🚧 Em breve | PIX, Cartão, Boleto, Split | - |
-| 🔵 PagSeguro | 🚧 Em breve | PIX, Cartão, Boleto | - |
-| ⚫ Stripe | 🚧 Em breve | Cartão, Assinaturas | - |
+| 🔴 **Adyen** | ✅ Pronto | PIX, Cartão (Crédito/Débito), Boleto, Payment Links, Refunds | [📖 Docs](src/Gateways/Adyen/AdyenGateway.md) |
+| 🔵 **Stripe** | 🚧 Em breve | Cartão, Assinaturas, Payment Links | [📖 Docs](src/Gateways/Stripe/StripeGateway.md) |
+| 💙 **PayPal** | 🚧 Em breve | Cartão, PayPal Checkout | [📖 Docs](src/Gateways/PayPal/PayPalGateway.md) |
+| 💚 **MercadoPago** | 🚧 Em breve | PIX, Cartão, Boleto, Split | [📖 Docs](src/Gateways/MercadoPago/MercadoPagoGateway.md) |
+| 🟠 **PagSeguro** | 🚧 Em breve | PIX, Cartão, Boleto | [📖 Docs](src/Gateways/PagSeguro/PagSeguroGateway.md) |
 
 > 💡 **O FakeBankGateway implementa TODAS as funcionalidades da biblioteca** - perfeito para desenvolvimento e testes!
 
