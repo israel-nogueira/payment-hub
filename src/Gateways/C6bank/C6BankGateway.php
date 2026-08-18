@@ -197,7 +197,7 @@ class C6BankGateway implements PaymentGatewayInterface
             'REGISTERED' => PaymentStatus::PENDING,
             'PAID' => PaymentStatus::APPROVED,
             'CANCELLED' => PaymentStatus::CANCELLED,
-            'EXPIRED' => PaymentStatus::EXPIRED,
+            'EXPIRED' => PaymentStatus::FAILED,
             'AUTHORIZED' => PaymentStatus::PENDING,
             'PROCESSING' => PaymentStatus::PROCESSING,
             'APPROVED' => PaymentStatus::APPROVED,
@@ -206,6 +206,53 @@ class C6BankGateway implements PaymentGatewayInterface
         ];
 
         return $statusMap[$c6Status] ?? PaymentStatus::PENDING;
+    }
+
+    // ==================== PAGAMENTO GENÉRICO ====================
+    
+    /**
+     * Pagamento genérico para C6Bank.
+     * Este método é exigido pela interface PaymentGatewayInterface.
+     * C6Bank não tem um endpoint específico para pagamento genérico,
+     * então redirecionamos para os métodos específicos baseado no tipo.
+     */
+    public function createPayment(array $data): PaymentResponse
+    {
+        // Verifica se é um pagamento PIX
+        if (isset($data['pixKey'])) {
+            $request = PixPaymentRequest::create(
+                amount: $data['amount'] ?? 0,
+                currency: $data['currency'] ?? 'BRL',
+                customerName: $data['customerName'] ?? null,
+                customerDocument: $data['customerDocument'] ?? null,
+                customerEmail: $data['customerEmail'] ?? null,
+                description: $data['description'] ?? null,
+                metadata: ['pixKey' => $data['pixKey']]
+            );
+            return $this->createPixPayment($request);
+        }
+
+        // Verifica se é um pagamento com cartão
+        if (isset($data['cardNumber']) || isset($data['cardToken'])) {
+            $request = CreditCardPaymentRequest::create(
+                amount: $data['amount'] ?? 0,
+                currency: $data['currency'] ?? 'BRL',
+                cardToken: $data['cardToken'] ?? null,
+                cardNumber: $data['cardNumber'] ?? null,
+                cardHolderName: $data['cardHolderName'] ?? null,
+                cardExpiryMonth: $data['cardExpiryMonth'] ?? null,
+                cardExpiryYear: $data['cardExpiryYear'] ?? null,
+                cardCvv: $data['cardCvv'] ?? null,
+                installments: $data['installments'] ?? 1,
+                capture: $data['capture'] ?? true,
+                customerName: $data['customerName'] ?? null,
+                customerDocument: $data['customerDocument'] ?? null,
+                customerEmail: $data['customerEmail'] ?? null
+            );
+            return $this->createCreditCardPayment($request);
+        }
+
+        throw new GatewayException('Invalid payment data: unable to determine payment method');
     }
 
     // ==================== PIX ====================
@@ -222,7 +269,7 @@ class C6BankGateway implements PaymentGatewayInterface
                 'original' => number_format($request->getAmount(), 2, '.', ''),
                 'modalidadeAlteracao' => 1,
             ],
-            'chave' => $request->pixKey,
+            'chave' => $request->metadata['pixKey'] ?? 'c6-pix-key',
             'solicitacaoPagador' => $request->description ?? 'Pagamento via PIX',
         ];
 
@@ -239,13 +286,14 @@ class C6BankGateway implements PaymentGatewayInterface
         return PaymentResponse::create(
             success: isset($response['txid']),
             transactionId: $response['txid'] ?? $txId,
-            status: $this->mapC6Status($response['status'] ?? 'ATIVA'),
+            status: $this->mapC6Status($response['status'] ?? 'ATIVA')->value,
             amount: $request->getAmount(),
-            currency: Currency::BRL,
-            gatewayResponse: $response,
-            pixQrCode: $response['qrcode'] ?? null,
-            pixCopyPaste: $response['pixCopiaECola'] ?? null,
-            rawResponse: $response
+            currency: Currency::BRL->value,
+            rawResponse: $response,
+            metadata: [
+                'pixQrCode' => $response['qrcode'] ?? null,
+                'pixCopyPaste' => $response['pixCopiaECola'] ?? null,
+            ]
         );
     }
     
@@ -279,7 +327,7 @@ class C6BankGateway implements PaymentGatewayInterface
         $customerEmail = $request->customerEmail ? (string)$request->customerEmail : '';
         
         $data = [
-            'amount' => (int)($request->money->getAmount() * 100),
+            'amount' => (int)($request->money->amount() * 100),
             'card' => [
                 'number' => $cardNumber,
                 'holder_name' => $request->cardHolderName,
@@ -304,10 +352,9 @@ class C6BankGateway implements PaymentGatewayInterface
         return PaymentResponse::create(
             success: isset($response['id']),
             transactionId: $response['id'] ?? '',
-            status: $this->mapC6Status($response['status'] ?? 'PROCESSING'),
-            amount: $request->money->getAmount(),
-            currency: Currency::BRL,
-            gatewayResponse: $response,
+            status: $this->mapC6Status($response['status'] ?? 'PROCESSING')->value,
+            amount: $request->money->amount(),
+            currency: Currency::BRL->value,
             rawResponse: $response
         );
     }
@@ -333,11 +380,11 @@ class C6BankGateway implements PaymentGatewayInterface
         return $response['token'];
     }
     
-    public function capturePreAuthorization(string $transactionId, ?float $amount = null): PaymentResponse
+    public function capturePreAuthorization(string $transactionId, ?Money $amount = null): PaymentResponse
     {
         $data = [];
         if ($amount !== null) {
-            $data['amount'] = (int)($amount * 100);
+            $data['amount'] = (int)($amount->amount() * 100);
         }
 
         $response = $this->request('POST', "/v1/payments/{$transactionId}/capture", $data);
@@ -345,10 +392,9 @@ class C6BankGateway implements PaymentGatewayInterface
         return PaymentResponse::create(
             success: isset($response['id']),
             transactionId: $response['id'] ?? $transactionId,
-            status: $this->mapC6Status($response['status'] ?? 'APPROVED'),
-            amount: $amount ?? 0,
-            currency: Currency::BRL,
-            gatewayResponse: $response,
+            status: $this->mapC6Status($response['status'] ?? 'APPROVED')->value,
+            amount: $amount?->amount() ?? 0,
+            currency: Currency::BRL->value,
             rawResponse: $response
         );
     }
@@ -360,10 +406,9 @@ class C6BankGateway implements PaymentGatewayInterface
         return PaymentResponse::create(
             success: isset($response['id']),
             transactionId: $response['id'] ?? $transactionId,
-            status: PaymentStatus::CANCELLED,
+            status: PaymentStatus::CANCELLED->value,
             amount: 0,
-            currency: Currency::BRL,
-            gatewayResponse: $response,
+            currency: Currency::BRL->value,
             rawResponse: $response
         );
     }
@@ -375,7 +420,7 @@ class C6BankGateway implements PaymentGatewayInterface
         $cardNumber = $request->cardNumber ? (string)$request->cardNumber : '';
         
         $data = [
-            'amount' => (int)($request->money->getAmount() * 100),
+            'amount' => (int)($request->money->amount() * 100),
             'card' => [
                 'number' => $cardNumber,
                 'holder_name' => $request->cardHolderName,
@@ -398,10 +443,9 @@ class C6BankGateway implements PaymentGatewayInterface
         return PaymentResponse::create(
             success: isset($response['id']),
             transactionId: $response['id'] ?? '',
-            status: $this->mapC6Status($response['status'] ?? 'PROCESSING'),
-            amount: $request->money->getAmount(),
-            currency: Currency::BRL,
-            gatewayResponse: $response,
+            status: $this->mapC6Status($response['status'] ?? 'PROCESSING')->value,
+            amount: $request->money->amount(),
+            currency: Currency::BRL->value,
             rawResponse: $response
         );
     }
@@ -412,10 +456,10 @@ class C6BankGateway implements PaymentGatewayInterface
     {
         $data = [
             'amount' => number_format($request->getAmount(), 2, '.', ''),
-            'due_date' => $request->dueDate->format('Y-m-d'),
+            'due_date' => $request->dueDate,
             'payer' => [
                 'name' => $request->customerName,
-                'tax_id' => preg_replace('/\D/', '', $request->getCustomerDocument()),
+                'tax_id' => preg_replace('/\D/', '', $request->getCustomerDocument() ?? ''),
             ],
             'description' => $request->description ?? 'Boleto bancário',
         ];
@@ -437,16 +481,19 @@ class C6BankGateway implements PaymentGatewayInterface
         return PaymentResponse::create(
             success: isset($response['id']),
             transactionId: $response['id'] ?? '',
-            status: $this->mapC6Status($response['status'] ?? 'REGISTERED'),
+            status: $this->mapC6Status($response['status'] ?? 'REGISTERED')->value,
             amount: $request->getAmount(),
-            currency: Currency::BRL,
-            gatewayResponse: $response,
-            boletoUrl: $response['url'] ?? null,
-            boletoBarcode: $response['barcode'] ?? null,
-            boletoDigitableLine: $response['digitable_line'] ?? null,
-            rawResponse: $response
+            currency: Currency::BRL->value,
+            rawResponse: $response,
+            metadata: [
+                'boletoUrl' => $response['url'] ?? null,
+                'boletoBarcode' => $response['barcode'] ?? null,
+                'boletoDigitableLine' => $response['digitable_line'] ?? null,
+            ]
         );
     }
+
+    
     
     public function getBoletoUrl(string $transactionId): string
     {
@@ -466,10 +513,9 @@ class C6BankGateway implements PaymentGatewayInterface
         return PaymentResponse::create(
             success: true,
             transactionId: $transactionId,
-            status: PaymentStatus::CANCELLED,
+            status: PaymentStatus::CANCELLED->value,
             amount: 0,
-            currency: Currency::BRL,
-            gatewayResponse: $response,
+            currency: Currency::BRL->value,
             rawResponse: $response
         );
     }
@@ -479,13 +525,13 @@ class C6BankGateway implements PaymentGatewayInterface
     public function createSubscription(SubscriptionRequest $request): SubscriptionResponse
     {
         $data = [
-            'amount' => number_format($request->amount, 2, '.', ''),
+            'amount' => number_format($request->getAmount(), 2, '.', ''),
             'interval' => strtolower($request->interval->value),
             'description' => $request->description ?? 'Assinatura',
             'customer' => [
                 'name' => $request->customerName ?? '',
-                'tax_id' => preg_replace('/\D/', '', $request->customerDocument ?? ''),
-                'email' => $request->customerEmail ?? '',
+                'tax_id' => preg_replace('/\D/', '', $request->getCustomerDocument() ?? ''),
+                'email' => $request->getCustomerEmail() ?? '',
             ],
         ];
 
@@ -496,34 +542,33 @@ class C6BankGateway implements PaymentGatewayInterface
             ];
         }
 
-        if ($request->maxCharges) {
-            $data['max_charges'] = $request->maxCharges;
+        if ($request->cycles) {
+            $data['max_charges'] = $request->cycles;
         }
 
         if ($request->startDate) {
-            $data['start_date'] = $request->startDate->format('Y-m-d');
+            $data['start_date'] = $request->startDate;
         }
 
         $response = $this->request('POST', '/v1/subscriptions', $data);
 
-        return SubscriptionResponse::create(
+        return new SubscriptionResponse(
             success: isset($response['id']),
             subscriptionId: $response['id'] ?? '',
             status: $this->mapC6Status($response['status'] ?? 'CREATED')->value,
-            nextBillingDate: isset($response['next_billing_date']) ? new \DateTime($response['next_billing_date']) : null,
             rawResponse: $response
         );
     }
+
     
     public function cancelSubscription(string $subscriptionId): SubscriptionResponse
     {
         $response = $this->request('DELETE', "/v1/subscriptions/{$subscriptionId}");
 
-        return SubscriptionResponse::create(
+        return new SubscriptionResponse(
             success: true,
             subscriptionId: $subscriptionId,
             status: 'cancelled',
-            nextBillingDate: null,
             rawResponse: $response
         );
     }
@@ -532,11 +577,10 @@ class C6BankGateway implements PaymentGatewayInterface
     {
         $response = $this->request('POST', "/v1/subscriptions/{$subscriptionId}/suspend");
 
-        return SubscriptionResponse::create(
+        return new SubscriptionResponse(
             success: isset($response['id']),
             subscriptionId: $subscriptionId,
             status: 'suspended',
-            nextBillingDate: null,
             rawResponse: $response
         );
     }
@@ -545,11 +589,10 @@ class C6BankGateway implements PaymentGatewayInterface
     {
         $response = $this->request('POST', "/v1/subscriptions/{$subscriptionId}/reactivate");
 
-        return SubscriptionResponse::create(
+        return new SubscriptionResponse(
             success: isset($response['id']),
             subscriptionId: $subscriptionId,
             status: 'active',
-            nextBillingDate: isset($response['next_billing_date']) ? new \DateTime($response['next_billing_date']) : null,
             rawResponse: $response
         );
     }
@@ -568,11 +611,10 @@ class C6BankGateway implements PaymentGatewayInterface
 
         $response = $this->request('PATCH', "/v1/subscriptions/{$subscriptionId}", $updateData);
 
-        return SubscriptionResponse::create(
+        return new SubscriptionResponse(
             success: isset($response['id']),
             subscriptionId: $subscriptionId,
             status: $response['status'] ?? 'active',
-            nextBillingDate: isset($response['next_billing_date']) ? new \DateTime($response['next_billing_date']) : null,
             rawResponse: $response
         );
     }
@@ -584,11 +626,11 @@ class C6BankGateway implements PaymentGatewayInterface
         $response = $this->request('GET', "/v1/payments/{$transactionId}");
 
         return TransactionStatusResponse::create(
+            success: isset($response['status']),
             transactionId: $transactionId,
-            status: $this->mapC6Status($response['status'] ?? 'PENDING'),
+            status: $this->mapC6Status($response['status'] ?? 'PENDING')->value,
             amount: $response['amount'] ?? 0,
-            currency: Currency::BRL,
-            createdAt: isset($response['created_at']) ? new \DateTime($response['created_at']) : new \DateTime(),
+            currency: Currency::BRL->value,
             rawResponse: $response
         );
     }
@@ -628,8 +670,8 @@ class C6BankGateway implements PaymentGatewayInterface
     {
         $data = [];
         
-        if ($request->amount) {
-            $data['amount'] = (int)($request->amount * 100);
+        if ($request->money) {
+            $data['amount'] = $request->money->cents();
         }
         
         if ($request->reason) {
@@ -648,10 +690,10 @@ class C6BankGateway implements PaymentGatewayInterface
         );
     }
     
-    public function partialRefund(string $transactionId, float $amount): RefundResponse
+    public function partialRefund(string $transactionId, Money $amount): RefundResponse
     {
         $data = [
-            'amount' => (int)($amount * 100),
+            'amount' => $amount->cents(),
         ];
 
         $response = $this->request('POST', "/v1/payments/{$transactionId}/refund", $data);
@@ -660,7 +702,7 @@ class C6BankGateway implements PaymentGatewayInterface
             success: isset($response['id']),
             refundId: $response['id'] ?? '',
             transactionId: $transactionId,
-            amount: $amount,
+            amount: $amount->amount(),
             status: $this->mapC6Status($response['status'] ?? 'REFUNDED')->value,
             rawResponse: $response
         );
@@ -694,10 +736,9 @@ class C6BankGateway implements PaymentGatewayInterface
         return PaymentResponse::create(
             success: isset($response['id']),
             transactionId: $response['id'] ?? $chargebackId,
-            status: $this->mapC6Status($response['status'] ?? 'PROCESSING'),
+            status: $this->mapC6Status($response['status'] ?? 'PROCESSING')->value,
             amount: 0,
-            currency: Currency::BRL,
-            gatewayResponse: $response,
+            currency: Currency::BRL->value,
             rawResponse: $response
         );
     }
@@ -707,7 +748,7 @@ class C6BankGateway implements PaymentGatewayInterface
     public function createSplitPayment(SplitPaymentRequest $request): PaymentResponse
     {
         $data = [
-            'amount' => (int)($request->totalAmount * 100),
+            'amount' => $request->money->cents(),
             'description' => $request->description ?? 'Split payment',
             'splits' => array_map(function($split) {
                 return [
@@ -724,10 +765,9 @@ class C6BankGateway implements PaymentGatewayInterface
         return PaymentResponse::create(
             success: isset($response['id']),
             transactionId: $response['id'] ?? '',
-            status: $this->mapC6Status($response['status'] ?? 'PROCESSING'),
-            amount: $request->totalAmount,
-            currency: Currency::BRL,
-            gatewayResponse: $response,
+            status: $this->mapC6Status($response['status'] ?? 'PROCESSING')->value,
+            amount: $request->money->amount(),
+            currency: Currency::BRL->value,
             rawResponse: $response
         );
     }
@@ -738,7 +778,7 @@ class C6BankGateway implements PaymentGatewayInterface
     {
         $data = [
             'name' => $request->name,
-            'tax_id' => preg_replace('/\D/', '', $request->taxId),
+            'tax_id' => preg_replace('/\D/', '', $request->documentNumber),
             'email' => $request->email,
             'phone' => preg_replace('/\D/', '', $request->phone ?? ''),
             'address' => [
@@ -764,7 +804,7 @@ class C6BankGateway implements PaymentGatewayInterface
 
         $response = $this->request('POST', '/v1/sub-accounts', $data);
 
-        return SubAccountResponse::create(
+        return new SubAccountResponse(
             success: isset($response['id']),
             subAccountId: $response['id'] ?? '',
             status: $response['status'] ?? 'active',
@@ -776,7 +816,7 @@ class C6BankGateway implements PaymentGatewayInterface
     {
         $response = $this->request('PATCH', "/v1/sub-accounts/{$subAccountId}", $data);
 
-        return SubAccountResponse::create(
+        return new SubAccountResponse(
             success: isset($response['id']),
             subAccountId: $subAccountId,
             status: $response['status'] ?? 'active',
@@ -788,7 +828,7 @@ class C6BankGateway implements PaymentGatewayInterface
     {
         $response = $this->request('GET', "/v1/sub-accounts/{$subAccountId}");
 
-        return SubAccountResponse::create(
+        return new SubAccountResponse(
             success: isset($response['id']),
             subAccountId: $subAccountId,
             status: $response['status'] ?? 'active',
@@ -800,7 +840,7 @@ class C6BankGateway implements PaymentGatewayInterface
     {
         $response = $this->request('POST', "/v1/sub-accounts/{$subAccountId}/activate");
 
-        return SubAccountResponse::create(
+        return new SubAccountResponse(
             success: isset($response['id']),
             subAccountId: $subAccountId,
             status: 'active',
@@ -812,7 +852,7 @@ class C6BankGateway implements PaymentGatewayInterface
     {
         $response = $this->request('POST', "/v1/sub-accounts/{$subAccountId}/deactivate");
 
-        return SubAccountResponse::create(
+        return new SubAccountResponse(
             success: isset($response['id']),
             subAccountId: $subAccountId,
             status: 'inactive',
@@ -832,47 +872,47 @@ class C6BankGateway implements PaymentGatewayInterface
 
         $response = $this->request('POST', '/v1/wallets', $data);
 
-        return WalletResponse::create(
+        return new WalletResponse(
             success: isset($response['id']),
             walletId: $response['id'] ?? '',
             balance: $response['balance'] ?? 0,
-            currency: Currency::BRL,
+            currency: $request->currency->value,
             rawResponse: $response
         );
     }
     
-    public function addBalance(string $walletId, float $amount): WalletResponse
+    public function addBalance(string $walletId, Money $amount): WalletResponse
     {
         $data = [
-            'amount' => (int)($amount * 100),
+            'amount' => $amount->cents(),
             'description' => 'Add balance',
         ];
 
         $response = $this->request('POST', "/v1/wallets/{$walletId}/credit", $data);
 
-        return WalletResponse::create(
+        return new WalletResponse(
             success: isset($response['id']),
             walletId: $walletId,
             balance: ($response['balance'] ?? 0) / 100,
-            currency: Currency::BRL,
+            currency: Currency::BRL->value,
             rawResponse: $response
         );
     }
     
-    public function deductBalance(string $walletId, float $amount): WalletResponse
+    public function deductBalance(string $walletId, Money $amount): WalletResponse
     {
         $data = [
-            'amount' => (int)($amount * 100),
+            'amount' => $amount->cents(),
             'description' => 'Deduct balance',
         ];
 
         $response = $this->request('POST', "/v1/wallets/{$walletId}/debit", $data);
 
-        return WalletResponse::create(
+        return new WalletResponse(
             success: isset($response['id']),
             walletId: $walletId,
             balance: ($response['balance'] ?? 0) / 100,
-            currency: Currency::BRL,
+            currency: Currency::BRL->value,
             rawResponse: $response
         );
     }
@@ -881,20 +921,25 @@ class C6BankGateway implements PaymentGatewayInterface
     {
         $response = $this->request('GET', "/v1/wallets/{$walletId}");
 
-        return BalanceResponse::create(
-            available: ($response['balance'] ?? 0) / 100,
-            pending: ($response['pending_balance'] ?? 0) / 100,
-            currency: Currency::BRL,
+        $available = ($response['balance'] ?? 0) / 100;
+        $pending = ($response['pending_balance'] ?? 0) / 100;
+
+        return new BalanceResponse(
+            success: isset($response['balance']),
+            balance: $available + $pending,
+            availableBalance: $available,
+            pendingBalance: $pending,
+            currency: Currency::BRL->value,
             rawResponse: $response
         );
     }
     
-    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, float $amount): TransferResponse
+    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, Money $amount): TransferResponse
     {
         $data = [
             'from_wallet_id' => $fromWalletId,
             'to_wallet_id' => $toWalletId,
-            'amount' => (int)($amount * 100),
+            'amount' => $amount->cents(),
         ];
 
         $response = $this->request('POST', '/v1/wallets/transfer', $data);
@@ -902,7 +947,7 @@ class C6BankGateway implements PaymentGatewayInterface
         return TransferResponse::create(
             success: isset($response['id']),
             transferId: $response['id'] ?? '',
-            amount: $amount,
+            amount: $amount->amount(),
             status: $this->mapC6Status($response['status'] ?? 'APPROVED')->value,
             rawResponse: $response
         );
@@ -913,18 +958,18 @@ class C6BankGateway implements PaymentGatewayInterface
     public function holdInEscrow(EscrowRequest $request): EscrowResponse
     {
         $data = [
-            'amount' => (int)($request->amount * 100),
+            'amount' => $request->money->cents(),
             'transaction_id' => $request->transactionId,
             'description' => $request->description ?? 'Escrow hold',
-            'release_date' => $request->releaseDate ? $request->releaseDate->format('Y-m-d') : null,
+            'release_date' => $request->releaseDate,
         ];
 
         $response = $this->request('POST', '/v1/escrow/hold', $data);
 
-        return EscrowResponse::create(
+        return new EscrowResponse(
             success: isset($response['id']),
             escrowId: $response['id'] ?? '',
-            amount: $request->amount,
+            amount: $request->money->amount(),
             status: $response['status'] ?? 'held',
             rawResponse: $response
         );
@@ -934,7 +979,7 @@ class C6BankGateway implements PaymentGatewayInterface
     {
         $response = $this->request('POST', "/v1/escrow/{$escrowId}/release");
 
-        return EscrowResponse::create(
+        return new EscrowResponse(
             success: isset($response['id']),
             escrowId: $escrowId,
             amount: ($response['amount'] ?? 0) / 100,
@@ -943,18 +988,18 @@ class C6BankGateway implements PaymentGatewayInterface
         );
     }
     
-    public function partialReleaseEscrow(string $escrowId, float $amount): EscrowResponse
+    public function partialReleaseEscrow(string $escrowId, Money $amount): EscrowResponse
     {
         $data = [
-            'amount' => (int)($amount * 100),
+            'amount' => $amount->cents(),
         ];
 
         $response = $this->request('POST', "/v1/escrow/{$escrowId}/partial-release", $data);
 
-        return EscrowResponse::create(
+        return new EscrowResponse(
             success: isset($response['id']),
             escrowId: $escrowId,
-            amount: $amount,
+            amount: $amount->amount(),
             status: $response['status'] ?? 'partially_released',
             rawResponse: $response
         );
@@ -964,7 +1009,7 @@ class C6BankGateway implements PaymentGatewayInterface
     {
         $response = $this->request('POST', "/v1/escrow/{$escrowId}/cancel");
 
-        return EscrowResponse::create(
+        return new EscrowResponse(
             success: isset($response['id']),
             escrowId: $escrowId,
             amount: 0,
@@ -978,23 +1023,22 @@ class C6BankGateway implements PaymentGatewayInterface
     public function transfer(TransferRequest $request): TransferResponse
     {
         $data = [
-            'amount' => (int)($request->amount * 100),
+            'amount' => $request->money->cents(),
             'bank_account' => [
                 'bank_code' => $request->bankCode,
-                'agency' => $request->agency,
-                'account' => $request->account,
-                'account_digit' => $request->accountDigit,
+                'agency' => $request->agencyNumber,
+                'account' => $request->accountNumber,
                 'type' => $request->accountType ?? 'checking',
             ],
             'description' => $request->description ?? 'Transfer',
         ];
 
-        if (isset($request->beneficiaryName)) {
-            $data['bank_account']['holder_name'] = $request->beneficiaryName;
+        if (isset($request->recipientName)) {
+            $data['bank_account']['holder_name'] = $request->recipientName;
         }
 
-        if (isset($request->beneficiaryDocument)) {
-            $data['bank_account']['holder_tax_id'] = preg_replace('/\D/', '', $request->beneficiaryDocument);
+        if (isset($request->documentNumber)) {
+            $data['bank_account']['holder_tax_id'] = preg_replace('/\D/', '', $request->documentNumber);
         }
 
         $response = $this->request('POST', '/v1/transfers', $data);
@@ -1002,7 +1046,7 @@ class C6BankGateway implements PaymentGatewayInterface
         return TransferResponse::create(
             success: isset($response['id']),
             transferId: $response['id'] ?? '',
-            amount: $request->amount,
+            amount: $request->money->amount(),
             status: $this->mapC6Status($response['status'] ?? 'PROCESSING')->value,
             rawResponse: $response
         );
@@ -1011,12 +1055,11 @@ class C6BankGateway implements PaymentGatewayInterface
     public function scheduleTransfer(TransferRequest $request, string $date): TransferResponse
     {
         $data = [
-            'amount' => (int)($request->amount * 100),
+            'amount' => $request->money->cents(),
             'bank_account' => [
                 'bank_code' => $request->bankCode,
-                'agency' => $request->agency,
-                'account' => $request->account,
-                'account_digit' => $request->accountDigit,
+                'agency' => $request->agencyNumber,
+                'account' => $request->accountNumber,
                 'type' => $request->accountType ?? 'checking',
             ],
             'scheduled_date' => $date,
@@ -1028,7 +1071,7 @@ class C6BankGateway implements PaymentGatewayInterface
         return TransferResponse::create(
             success: isset($response['id']),
             transferId: $response['id'] ?? '',
-            amount: $request->amount,
+            amount: $request->money->amount(),
             status: 'scheduled',
             rawResponse: $response
         );
@@ -1066,21 +1109,23 @@ class C6BankGateway implements PaymentGatewayInterface
         }
 
         $data['payment_methods'] = [];
-        
-        if ($request->enablePix) {
+
+        $methods = $request->acceptedPaymentMethods ?? [];
+
+        if (in_array('pix', $methods, true)) {
             $data['payment_methods']['pix'] = [
                 'enabled' => true,
             ];
         }
 
-        if ($request->enableCard) {
+        if (in_array('credit_card', $methods, true)) {
             $data['payment_methods']['credit_card'] = [
                 'enabled' => true,
                 'installments' => $request->maxInstallments ?? 1,
             ];
         }
 
-        if ($request->enableBoleto) {
+        if (in_array('boleto', $methods, true)) {
             $data['payment_methods']['boleto'] = [
                 'enabled' => true,
             ];
@@ -1096,11 +1141,11 @@ class C6BankGateway implements PaymentGatewayInterface
 
         $response = $this->request('POST', '/v1/payment-links', $data);
 
-        return PaymentLinkResponse::create(
+        return new PaymentLinkResponse(
             success: isset($response['id']),
             linkId: $response['id'] ?? '',
             url: $response['url'] ?? '',
-            expiresAt: $request->expiresAt,
+            status: $response['status'] ?? 'active',
             rawResponse: $response
         );
     }
@@ -1109,11 +1154,11 @@ class C6BankGateway implements PaymentGatewayInterface
     {
         $response = $this->request('GET', "/v1/payment-links/{$linkId}");
 
-        return PaymentLinkResponse::create(
+        return new PaymentLinkResponse(
             success: isset($response['id']),
             linkId: $linkId,
             url: $response['url'] ?? '',
-            expiresAt: isset($response['expires_at']) ? new \DateTime($response['expires_at']) : null,
+            status: $response['status'] ?? 'active',
             rawResponse: $response
         );
     }
@@ -1122,11 +1167,11 @@ class C6BankGateway implements PaymentGatewayInterface
     {
         $response = $this->request('DELETE', "/v1/payment-links/{$linkId}");
 
-        return PaymentLinkResponse::create(
+        return new PaymentLinkResponse(
             success: true,
             linkId: $linkId,
             url: '',
-            expiresAt: null,
+            status: 'expired',
             rawResponse: $response
         );
     }
@@ -1137,8 +1182,8 @@ class C6BankGateway implements PaymentGatewayInterface
     {
         $data = [
             'name' => $request->name,
-            'tax_id' => preg_replace('/\D/', '', $request->taxId),
-            'email' => $request->email,
+            'tax_id' => preg_replace('/\D/', '', $request->document?->value() ?? ''),
+            'email' => $request->email->value(),
             'phone' => preg_replace('/\D/', '', $request->phone ?? ''),
         ];
 
@@ -1156,11 +1201,9 @@ class C6BankGateway implements PaymentGatewayInterface
 
         $response = $this->request('POST', '/v1/customers', $data);
 
-        return CustomerResponse::create(
+        return new CustomerResponse(
             success: isset($response['id']),
             customerId: $response['id'] ?? '',
-            name: $response['name'] ?? $request->name,
-            email: $response['email'] ?? $request->email,
             rawResponse: $response
         );
     }
@@ -1169,11 +1212,9 @@ class C6BankGateway implements PaymentGatewayInterface
     {
         $response = $this->request('PATCH', "/v1/customers/{$customerId}", $data);
 
-        return CustomerResponse::create(
+        return new CustomerResponse(
             success: isset($response['id']),
             customerId: $customerId,
-            name: $response['name'] ?? '',
-            email: $response['email'] ?? '',
             rawResponse: $response
         );
     }
@@ -1182,11 +1223,9 @@ class C6BankGateway implements PaymentGatewayInterface
     {
         $response = $this->request('GET', "/v1/customers/{$customerId}");
 
-        return CustomerResponse::create(
+        return new CustomerResponse(
             success: isset($response['id']),
             customerId: $customerId,
-            name: $response['name'] ?? '',
-            email: $response['email'] ?? '',
             rawResponse: $response
         );
     }
@@ -1282,10 +1321,15 @@ class C6BankGateway implements PaymentGatewayInterface
     {
         $response = $this->request('GET', '/v1/balance');
 
-        return BalanceResponse::create(
-            available: ($response['available'] ?? 0) / 100,
-            pending: ($response['pending'] ?? 0) / 100,
-            currency: Currency::BRL,
+        $available = ($response['available'] ?? 0) / 100;
+        $pending = ($response['pending'] ?? 0) / 100;
+
+        return new BalanceResponse(
+            success: isset($response['available']),
+            balance: $available + $pending,
+            availableBalance: $available,
+            pendingBalance: $pending,
+            currency: Currency::BRL->value,
             rawResponse: $response
         );
     }
@@ -1318,10 +1362,9 @@ class C6BankGateway implements PaymentGatewayInterface
         return PaymentResponse::create(
             success: isset($response['id']),
             transactionId: $response['id'] ?? '',
-            status: $this->mapC6Status($response['status'] ?? 'PROCESSING'),
+            status: $this->mapC6Status($response['status'] ?? 'PROCESSING')->value,
             amount: ($response['amount'] ?? 0) / 100,
-            currency: Currency::BRL,
-            gatewayResponse: $response,
+            currency: Currency::BRL->value,
             rawResponse: $response
         );
     }

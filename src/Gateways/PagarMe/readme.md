@@ -182,9 +182,12 @@ $payment = $hub->createCreditCardPayment(
 );
 
 // Depois, quando quiser capturar
+use IsraelNogueira\PaymentHub\ValueObjects\Money;
+use IsraelNogueira\PaymentHub\Enums\Currency;
+
 $captured = $hub->capturePreAuthorization(
     $payment->transactionId,
-    amount: 299.90 // Opcional: captura parcial
+    amount: Money::from(299.90, Currency::BRL) // Opcional: captura parcial
 );
 ```
 
@@ -251,8 +254,7 @@ $payment = $hub->createSplitPayment(
                 'liable' => false,
             ],
         ],
-        paymentMethod: 'credit_card',
-        cardToken: 'card_xxxxxxxxxxxxx'
+        paymentMethod: 'credit_card'
     )
 );
 ```
@@ -315,9 +317,12 @@ echo "Valor: {$refund->money->formatted()}\n";
 ### Estorno Parcial
 
 ```php
+use IsraelNogueira\PaymentHub\ValueObjects\Money;
+use IsraelNogueira\PaymentHub\Enums\Currency;
+
 $refund = $hub->partialRefund(
     transactionId: 'or_xxxxxxxxxxxxx',
-    amount: 50.00 // Estornar apenas R$ 50,00
+    amount: Money::from(50.00, Currency::BRL) // Estornar apenas R$ 50,00
 );
 ```
 
@@ -459,4 +464,4 @@ Para questões da Pagar.me:
 
 ---
 
-**Última atualização**: Fevereiro 2025
+**Última atualização**: Agosto 2026

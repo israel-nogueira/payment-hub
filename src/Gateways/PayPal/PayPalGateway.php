@@ -347,14 +347,14 @@ class PayPalGateway implements PaymentGatewayInterface
         return $response['id'];
     }
     
-    public function capturePreAuthorization(string $transactionId, ?float $amount = null): PaymentResponse
+    public function capturePreAuthorization(string $transactionId, ?Money $amount = null): PaymentResponse
     {
         $data = [];
         
         if ($amount !== null) {
             $data['amount'] = [
-                'currency_code' => 'USD',
-                'value' => number_format($amount, 2, '.', ''),
+                'currency_code' => $this->getCurrencyCode($amount->currency()),
+                'value' => number_format($amount->amount(), 2, '.', ''),
             ];
         }
 
@@ -627,12 +627,12 @@ class PayPalGateway implements PaymentGatewayInterface
         );
     }
     
-    public function partialRefund(string $transactionId, float $amount): RefundResponse
+    public function partialRefund(string $transactionId, Money $amount): RefundResponse
     {
         $data = [
             'amount' => [
-                'value' => number_format($amount, 2, '.', ''),
-                'currency_code' => 'USD',
+                'value' => number_format($amount->amount(), 2, '.', ''),
+                'currency_code' => $this->getCurrencyCode($amount->currency()),
             ]
         ];
 
@@ -727,26 +727,24 @@ class PayPalGateway implements PaymentGatewayInterface
         throw new GatewayException('PayPal accounts serve as wallets - users create them directly on PayPal');
     }
     
-    public function addBalance(string $walletId, float $amount): WalletResponse
+    public function addBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Use Payouts API to send money to PayPal accounts');
     }
-    
-    public function deductBalance(string $walletId, float $amount): WalletResponse
+
+    public function deductBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Balance deduction happens through payments - cannot be done directly');
     }
-    
     public function getWalletBalance(string $walletId): BalanceResponse
     {
         throw new GatewayException('Use getBalance() to check merchant account balance');
     }
     
-    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, float $amount): TransferResponse
+    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, Money $amount): TransferResponse
     {
         throw new GatewayException('Use Payouts API for transfers to other PayPal accounts');
     }
-    
     // ==================== ESCROW ====================
     
     public function holdInEscrow(EscrowRequest $request): EscrowResponse
@@ -759,11 +757,11 @@ class PayPalGateway implements PaymentGatewayInterface
         throw new GatewayException('Funds are released automatically when transaction completes');
     }
     
-    public function partialReleaseEscrow(string $escrowId, float $amount): EscrowResponse
+    public function partialReleaseEscrow(string $escrowId, Money $amount): EscrowResponse
     {
         throw new GatewayException('Use partial capture for similar functionality');
     }
-    
+
     public function cancelEscrow(string $escrowId): EscrowResponse
     {
         throw new GatewayException('Cancel the order to void unreleased funds');

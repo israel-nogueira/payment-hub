@@ -1,4 +1,5 @@
 /vendor/
+/vendor/*
 /node_modules/
 /coverage/
 /.phpunit.cache/
@@ -8,7 +9,9 @@
 /.vscode/
 /.DS_Store
 *.log
-*.zip
+/*.zip
+composer.phar
+.env
 *.cache
 /build/
 /dist/

@@ -124,6 +124,19 @@ class AdyenGateway implements PaymentGatewayInterface
         return $value / 100;
     }
 
+    // ==================== PAGAMENTO GENÉRICO ====================
+
+    /**
+     * Adyen possui métodos específicos para cada meio de pagamento
+     * (createPixPayment, createCreditCardPayment, etc). Não há um
+     * endpoint genérico único, então orientamos o uso dos métodos
+     * específicos em vez de aceitar um array solto.
+     */
+    public function createPayment(array $data): PaymentResponse
+    {
+        throw new GatewayException('Adyen requires specific methods: use createPixPayment, createCreditCardPayment, createDebitCardPayment or createBoleto instead of createPayment.');
+    }
+
     // ==================== CLIENTES ====================
     
     public function createCustomer(CustomerRequest $request): CustomerResponse
@@ -152,8 +165,8 @@ class AdyenGateway implements PaymentGatewayInterface
     {
         $data = [
             'amount' => [
-                'currency' => 'BRL',
-                'value' => $this->getAmountInMinorUnits($request->money->amount()),
+                'currency' => $request->money->currency()->value,
+                'value' => $this->getAmountInMinorUnits($request->money->amount(), $request->money->currency()->value),
             ],
             'merchantAccount' => $this->merchantAccount,
             'reference' => 'PIX_' . uniqid(),
@@ -168,16 +181,18 @@ class AdyenGateway implements PaymentGatewayInterface
         ];
 
         if ($request->customerDocument) {
-            $data['shopperReference'] = $request->customerDocument;
+            $data['shopperReference'] = $request->customerDocument?->value();
         }
 
         $response = $this->request('POST', '/v70/payments', $data);
 
+        $responseCurrency = $response['amount']['currency'] ?? $request->money->currency()->value;
+
         $amount = $this->getAmountFromMinorUnits(
             $response['amount']['value'] ?? 0, 
-            'BRL'
+            $responseCurrency
         );
-        $money = Money::from($amount, Currency::BRL);
+        $money = Money::from($amount, Currency::fromString($responseCurrency));
 
         return new PaymentResponse(
             success: true,
@@ -209,8 +224,8 @@ class AdyenGateway implements PaymentGatewayInterface
     {
         $data = [
             'amount' => [
-                'currency' => 'BRL',
-                'value' => $this->getAmountInMinorUnits($request->money->amount()),
+                'currency' => $request->money->currency()->value,
+                'value' => $this->getAmountInMinorUnits($request->money->amount(), $request->money->currency()->value),
             ],
             'merchantAccount' => $this->merchantAccount,
             'reference' => 'CC_' . uniqid(),
@@ -222,7 +237,7 @@ class AdyenGateway implements PaymentGatewayInterface
                 'encryptedSecurityCode' => $request->cardCvv,
                 'holderName' => $request->cardHolderName,
             ],
-            'shopperReference' => $request->customerDocument ?? uniqid('shopper_'),
+            'shopperReference' => $request->customerDocument?->value() ?? uniqid('shopper_'),
             'shopperEmail' => $request->customerEmail?->value() ?? 'cliente@example.com',
             'shopperName' => [
                 'firstName' => $request->customerName ?? 'Cliente',
@@ -230,25 +245,25 @@ class AdyenGateway implements PaymentGatewayInterface
             'countryCode' => 'BR',
         ];
 
-        // Parcelamento
         if ($request->installments > 1) {
             $data['installments'] = [
                 'value' => $request->installments,
             ];
         }
 
-        // Captura
         if (!$request->capture) {
-            $data['captureDelayHours'] = 0; // Manual capture
+            $data['captureDelayHours'] = 0;
         }
 
         $response = $this->request('POST', '/v70/payments', $data);
 
+        $responseCurrency = $response['amount']['currency'] ?? $request->money->currency()->value;
+
         $amount = $this->getAmountFromMinorUnits(
             $response['amount']['value'] ?? 0,
-            'BRL'
+            $responseCurrency
         );
-        $money = Money::from($amount, Currency::BRL);
+        $money = Money::from($amount, Currency::fromString($responseCurrency));
 
         return new PaymentResponse(
             success: true,
@@ -270,7 +285,7 @@ class AdyenGateway implements PaymentGatewayInterface
         throw new GatewayException('Adyen uses client-side encryption. Use Adyen Web SDK to encrypt card data.');
     }
 
-    public function capturePreAuthorization(string $transactionId, ?float $amount = null): PaymentResponse
+    public function capturePreAuthorization(string $transactionId, ?Money $amount = null): PaymentResponse
     {
         $data = [
             'merchantAccount' => $this->merchantAccount,
@@ -279,18 +294,20 @@ class AdyenGateway implements PaymentGatewayInterface
 
         if ($amount !== null) {
             $data['modificationAmount'] = [
-                'currency' => 'BRL',
-                'value' => $this->getAmountInMinorUnits($amount),
+                'currency' => $amount->currency()->value,
+                'value' => $this->getAmountInMinorUnits($amount->amount(), $amount->currency()->value),
             ];
         }
 
         $response = $this->request('POST', '/v70/captures', $data);
 
-        $capturedAmount = isset($response['amount']) 
-            ? $this->getAmountFromMinorUnits($response['amount']['value'], 'BRL')
-            : ($amount ?? 0);
+        $responseCurrency = $response['amount']['currency'] ?? $amount?->currency()->value ?? 'BRL';
 
-        $money = Money::from($capturedAmount, Currency::BRL);
+        $capturedAmount = isset($response['amount']) 
+            ? $this->getAmountFromMinorUnits($response['amount']['value'], $responseCurrency)
+            : ($amount?->amount() ?? 0);
+
+        $money = Money::from($capturedAmount, Currency::fromString($responseCurrency));
 
         return new PaymentResponse(
             success: true,
@@ -327,8 +344,8 @@ class AdyenGateway implements PaymentGatewayInterface
     {
         $data = [
             'amount' => [
-                'currency' => 'BRL',
-                'value' => $this->getAmountInMinorUnits($request->money->amount()),
+                'currency' => $request->money->currency()->value,
+                'value' => $this->getAmountInMinorUnits($request->money->amount(), $request->money->currency()->value),
             ],
             'merchantAccount' => $this->merchantAccount,
             'reference' => 'DC_' . uniqid(),
@@ -340,18 +357,20 @@ class AdyenGateway implements PaymentGatewayInterface
                 'encryptedSecurityCode' => $request->cardCvv,
                 'holderName' => $request->cardHolderName,
             ],
-            'shopperReference' => $request->customerDocument ?? uniqid('shopper_'),
+            'shopperReference' => $request->customerDocument?->value() ?? uniqid('shopper_'),
             'shopperEmail' => $request->customerEmail?->value() ?? 'cliente@example.com',
             'countryCode' => 'BR',
         ];
 
         $response = $this->request('POST', '/v70/payments', $data);
 
+        $responseCurrency = $response['amount']['currency'] ?? $request->money->currency()->value;
+
         $amount = $this->getAmountFromMinorUnits(
             $response['amount']['value'] ?? 0,
-            'BRL'
+            $responseCurrency
         );
-        $money = Money::from($amount, Currency::BRL);
+        $money = Money::from($amount, Currency::fromString($responseCurrency));
 
         return new PaymentResponse(
             success: true,
@@ -367,10 +386,12 @@ class AdyenGateway implements PaymentGatewayInterface
     
     public function createBoleto(BoletoPaymentRequest $request): PaymentResponse
     {
+        $nameParts = explode(' ', $request->customerName ?? 'Cliente');
+
         $data = [
             'amount' => [
-                'currency' => 'BRL',
-                'value' => $this->getAmountInMinorUnits($request->money->amount()),
+                'currency' => $request->money->currency()->value,
+                'value' => $this->getAmountInMinorUnits($request->money->amount(), $request->money->currency()->value),
             ],
             'merchantAccount' => $this->merchantAccount,
             'reference' => 'BOL_' . uniqid(),
@@ -378,8 +399,8 @@ class AdyenGateway implements PaymentGatewayInterface
                 'type' => 'boletobancario',
             ],
             'shopperName' => [
-                'firstName' => explode(' ', $request->customerName)[0],
-                'lastName' => explode(' ', $request->customerName)[1] ?? '',
+                'firstName' => $nameParts[0],
+                'lastName' => $nameParts[1] ?? '',
             ],
             'shopperEmail' => $request->customerEmail?->value() ?? 'cliente@example.com',
             'countryCode' => 'BR',
@@ -387,16 +408,18 @@ class AdyenGateway implements PaymentGatewayInterface
         ];
 
         if ($request->customerDocument) {
-            $data['socialSecurityNumber'] = $request->customerDocument;
+            $data['socialSecurityNumber'] = $request->customerDocument?->value();
         }
 
         $response = $this->request('POST', '/v70/payments', $data);
 
+        $responseCurrency = $response['amount']['currency'] ?? $request->money->currency()->value;
+
         $amount = $this->getAmountFromMinorUnits(
             $response['amount']['value'] ?? 0,
-            'BRL'
+            $responseCurrency
         );
-        $money = Money::from($amount, Currency::BRL);
+        $money = Money::from($amount, Currency::fromString($responseCurrency));
 
         return new PaymentResponse(
             success: true,
@@ -472,13 +495,22 @@ class AdyenGateway implements PaymentGatewayInterface
             'originalReference' => $request->transactionId,
         ];
 
+        if ($request->money !== null) {
+            $data['modificationAmount'] = [
+                'currency' => $request->money->currency()->value,
+                'value' => $this->getAmountInMinorUnits($request->money->amount(), $request->money->currency()->value),
+            ];
+        }
+
         $response = $this->request('POST', '/v70/refunds', $data);
 
-        $amount = isset($response['amount'])
-            ? $this->getAmountFromMinorUnits($response['amount']['value'], 'BRL')
-            : 0;
+        $responseCurrency = $response['amount']['currency'] ?? $request->money?->currency()->value ?? 'BRL';
 
-        $money = Money::from($amount, Currency::BRL);
+        $amount = isset($response['amount'])
+            ? $this->getAmountFromMinorUnits($response['amount']['value'], $responseCurrency)
+            : ($request->money?->amount() ?? 0);
+
+        $money = Money::from($amount, Currency::fromString($responseCurrency));
 
         return new RefundResponse(
             success: true,
@@ -490,24 +522,26 @@ class AdyenGateway implements PaymentGatewayInterface
         );
     }
 
-    public function partialRefund(string $transactionId, float $amount): RefundResponse
+    public function partialRefund(string $transactionId, Money $amount): RefundResponse
     {
         $data = [
             'merchantAccount' => $this->merchantAccount,
             'originalReference' => $transactionId,
             'modificationAmount' => [
-                'currency' => 'BRL',
-                'value' => $this->getAmountInMinorUnits($amount),
+                'currency' => $amount->currency()->value,
+                'value' => $this->getAmountInMinorUnits($amount->amount(), $amount->currency()->value),
             ],
         ];
 
         $response = $this->request('POST', '/v70/refunds', $data);
 
+        $responseCurrency = $response['amount']['currency'] ?? $amount->currency()->value;
+
         $refundAmount = $this->getAmountFromMinorUnits(
             $response['amount']['value'] ?? 0,
-            'BRL'
+            $responseCurrency
         );
-        $money = Money::from($refundAmount, Currency::BRL);
+        $money = Money::from($refundAmount, Currency::fromString($responseCurrency));
 
         return new RefundResponse(
             success: true,
@@ -570,12 +604,12 @@ class AdyenGateway implements PaymentGatewayInterface
         throw new GatewayException('Wallets available via Adyen for Platforms.');
     }
 
-    public function addBalance(string $walletId, float $amount): WalletResponse
+    public function addBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Balance management via Adyen for Platforms.');
     }
 
-    public function deductBalance(string $walletId, float $amount): WalletResponse
+    public function deductBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Balance management via Adyen for Platforms.');
     }
@@ -585,7 +619,7 @@ class AdyenGateway implements PaymentGatewayInterface
         throw new GatewayException('Balance inquiry via Adyen for Platforms.');
     }
 
-    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, float $amount): TransferResponse
+    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, Money $amount): TransferResponse
     {
         throw new GatewayException('Transfers via Adyen for Platforms.');
     }
@@ -602,7 +636,7 @@ class AdyenGateway implements PaymentGatewayInterface
         throw new GatewayException('Use capture endpoint to release held funds.');
     }
 
-    public function partialReleaseEscrow(string $escrowId, float $amount): EscrowResponse
+    public function partialReleaseEscrow(string $escrowId, Money $amount): EscrowResponse
     {
         throw new GatewayException('Use partial capture for partial release.');
     }
@@ -635,8 +669,8 @@ class AdyenGateway implements PaymentGatewayInterface
     {
         $data = [
             'amount' => [
-                'currency' => 'BRL',
-                'value' => $this->getAmountInMinorUnits($request->money->amount()),
+                'currency' => $request->currency,
+                'value' => $this->getAmountInMinorUnits($request->amount),
             ],
             'merchantAccount' => $this->merchantAccount,
             'reference' => 'LINK_' . uniqid(),
@@ -645,7 +679,7 @@ class AdyenGateway implements PaymentGatewayInterface
         ];
 
         if ($request->expiresAt) {
-            $data['expiresAt'] = $request->expiresAt;
+            $data['expiresAt'] = $request->expiresAt->format('Y-m-d\TH:i:s');
         }
 
         $response = $this->request('POST', '/v70/paymentLinks', $data);

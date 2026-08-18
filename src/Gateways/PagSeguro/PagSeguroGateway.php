@@ -141,11 +141,11 @@ class PagSeguroGateway implements PaymentGatewayInterface
     {
         $data = [
             'name' => $request->name,
-            'email' => $request->email,
+            'email' => $request->email->value(),
         ];
 
-        if ($request->documentNumber) {
-            $data['tax_id'] = preg_replace('/\D/', '', $request->documentNumber);
+        if ($request->document) {
+            $data['tax_id'] = preg_replace('/\D/', '', $request->document->value());
         }
 
         if ($request->phone) {
@@ -366,14 +366,14 @@ class PagSeguroGateway implements PaymentGatewayInterface
         return $response['id'] ?? '';
     }
 
-    public function capturePreAuthorization(string $transactionId, ?float $amount = null): PaymentResponse
+    public function capturePreAuthorization(string $transactionId, ?Money $amount = null): PaymentResponse
     {
         $response = $this->request('GET', "/orders/{$transactionId}");
         $charge = $response['charges'][0] ?? [];
 
         $data = [];
         if ($amount !== null) {
-            $data['amount'] = ['value' => (int)($amount * 100)];
+            $data['amount'] = ['value' => (int)($amount->amount() * 100)];
         }
 
         $captureResponse = $this->request('POST', "/charges/{$charge['id']}/capture", $data);
@@ -707,14 +707,14 @@ class PagSeguroGateway implements PaymentGatewayInterface
         );
     }
 
-    public function partialRefund(string $transactionId, float $amount): RefundResponse
+    public function partialRefund(string $transactionId, Money $amount): RefundResponse
     {
         $response = $this->request('GET', "/orders/{$transactionId}");
         $charge = $response['charges'][0] ?? [];
 
         $refundData = [
             'amount' => [
-                'value' => (int)($amount * 100),
+                'value' => (int)($amount->amount() * 100),
             ],
         ];
 
@@ -795,22 +795,22 @@ class PagSeguroGateway implements PaymentGatewayInterface
         throw new GatewayException('Wallets not supported by PagSeguro standard API.');
     }
 
-    public function addBalance(string $walletId, float $amount): WalletResponse
-    {
-        throw new GatewayException('Wallets not supported by PagSeguro standard API.');
-    }
-
-    public function deductBalance(string $walletId, float $amount): WalletResponse
-    {
-        throw new GatewayException('Wallets not supported by PagSeguro standard API.');
-    }
-
     public function getWalletBalance(string $walletId): BalanceResponse
     {
         throw new GatewayException('Wallets not supported by PagSeguro standard API.');
     }
 
-    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, float $amount): TransferResponse
+    public function addBalance(string $walletId, Money $amount): WalletResponse
+    {
+        throw new GatewayException('Wallets not supported by PagSeguro standard API.');
+    }
+
+    public function deductBalance(string $walletId, Money $amount): WalletResponse
+    {
+        throw new GatewayException('Wallets not supported by PagSeguro standard API.');
+    }
+
+    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, Money $amount): TransferResponse
     {
         throw new GatewayException('Wallets not supported by PagSeguro standard API.');
     }
@@ -827,7 +827,7 @@ class PagSeguroGateway implements PaymentGatewayInterface
         throw new GatewayException('Escrow not directly supported.');
     }
 
-    public function partialReleaseEscrow(string $escrowId, float $amount): EscrowResponse
+    public function partialReleaseEscrow(string $escrowId, Money $amount): EscrowResponse
     {
         throw new GatewayException('Escrow not directly supported.');
     }
@@ -862,7 +862,7 @@ class PagSeguroGateway implements PaymentGatewayInterface
             'reference_id' => 'LINK_' . uniqid(),
             'description' => $request->description ?? 'Link de Pagamento',
             'amount' => [
-                'value' => (int)($request->money->amount() * 100),
+                'value' => (int)($request->amount * 100),
                 'currency' => 'BRL',
             ],
         ];
@@ -883,6 +883,59 @@ class PagSeguroGateway implements PaymentGatewayInterface
         );
     }
 
+    public function createPayment(array $data): PaymentResponse
+    {
+        if (isset($data['pixKey']) || ($data['paymentMethod'] ?? null) === 'pix') {
+            $request = PixPaymentRequest::create(
+                amount: $data['amount'] ?? 0,
+                currency: $data['currency'] ?? 'BRL',
+                description: $data['description'] ?? null,
+                customerName: $data['customerName'] ?? null,
+                customerDocument: $data['customerDocument'] ?? null,
+                customerEmail: $data['customerEmail'] ?? null,
+                expiresInMinutes: $data['expiresInMinutes'] ?? null,
+                metadata: $data['metadata'] ?? null
+            );
+            return $this->createPixPayment($request);
+        }
+
+        if (isset($data['dueDate']) && !isset($data['cardNumber']) && !isset($data['cardToken'])) {
+            $request = BoletoPaymentRequest::create(
+                amount: $data['amount'] ?? 0,
+                currency: $data['currency'] ?? 'BRL',
+                dueDate: $data['dueDate'] ?? null,
+                description: $data['description'] ?? null,
+                customerName: $data['customerName'] ?? null,
+                customerDocument: $data['customerDocument'] ?? null,
+                customerEmail: $data['customerEmail'] ?? null,
+                customerAddress: $data['customerAddress'] ?? null
+            );
+            return $this->createBoleto($request);
+        }
+
+        if (isset($data['cardNumber']) || isset($data['cardToken'])) {
+            $request = CreditCardPaymentRequest::create(
+                amount: $data['amount'] ?? 0,
+                currency: $data['currency'] ?? 'BRL',
+                cardToken: $data['cardToken'] ?? null,
+                cardNumber: $data['cardNumber'] ?? null,
+                cardHolderName: $data['cardHolderName'] ?? null,
+                cardExpiryMonth: $data['cardExpiryMonth'] ?? null,
+                cardExpiryYear: $data['cardExpiryYear'] ?? null,
+                cardCvv: $data['cardCvv'] ?? null,
+                installments: $data['installments'] ?? 1,
+                capture: $data['capture'] ?? true,
+                customerName: $data['customerName'] ?? null,
+                customerDocument: $data['customerDocument'] ?? null,
+                customerEmail: $data['customerEmail'] ?? null,
+                billingAddress: $data['billingAddress'] ?? null
+            );
+            return $this->createCreditCardPayment($request);
+        }
+
+        throw new GatewayException('Invalid payment data: unable to determine payment method');
+    }
+    
     public function getPaymentLink(string $linkId): PaymentLinkResponse
     {
         $response = $this->request('GET', "/links/{$linkId}");

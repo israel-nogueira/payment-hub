@@ -141,6 +141,13 @@ class EbanxGateway implements PaymentGatewayInterface
         return [];
     }
 
+    // ==================== PAGAMENTO GENÉRICO ====================
+
+    public function createPayment(array $data): PaymentResponse
+    {
+        throw new GatewayException('EBANX does not have a generic payment endpoint. Use createPixPayment(), createCreditCardPayment() or createDebitCardPayment().');
+    }
+
     // ==================== PIX ====================
 
     public function createPixPayment(PixPaymentRequest $request): PaymentResponse
@@ -272,14 +279,14 @@ class EbanxGateway implements PaymentGatewayInterface
         return $response['token'] ?? '';
     }
 
-    public function capturePreAuthorization(string $transactionId, ?float $amount = null): PaymentResponse
+    public function capturePreAuthorization(string $transactionId, ?Money $amount = null): PaymentResponse
     {
         $data = [
             'hash' => $transactionId,
         ];
 
         if ($amount !== null) {
-            $data['amount'] = number_format($amount, 2, '.', '');
+            $data['amount'] = number_format($amount->amount(), 2, '.', '');
         }
 
         $response = $this->request('POST', '/ws/capture', $data);
@@ -553,18 +560,18 @@ class EbanxGateway implements PaymentGatewayInterface
         );
     }
 
-    public function partialRefund(string $transactionId, float $amount): RefundResponse
+    public function partialRefund(string $transactionId, Money $amount): RefundResponse
     {
         $data = [
             'operation' => 'request',
             'hash' => $transactionId,
-            'amount' => number_format($amount, 2, '.', ''),
+            'amount' => number_format($amount->amount(), 2, '.', ''),
         ];
 
         $response = $this->request('POST', '/ws/refund', $data);
 
         $payment = $response['payment'] ?? [];
-        $money = Money::from($amount, Currency::BRL);
+        $money = $amount;
 
         return new RefundResponse(
             success: $response['status'] === 'SUCCESS',
@@ -629,12 +636,12 @@ class EbanxGateway implements PaymentGatewayInterface
         throw new GatewayException('Wallets not available in EBANX');
     }
 
-    public function addBalance(string $walletId, float $amount): WalletResponse
+    public function addBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Wallets not available in EBANX');
     }
 
-    public function deductBalance(string $walletId, float $amount): WalletResponse
+    public function deductBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Wallets not available in EBANX');
     }
@@ -644,7 +651,7 @@ class EbanxGateway implements PaymentGatewayInterface
         throw new GatewayException('Wallets not available in EBANX');
     }
 
-    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, float $amount): TransferResponse
+    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, Money $amount): TransferResponse
     {
         throw new GatewayException('Wallets not available in EBANX');
     }
@@ -661,7 +668,7 @@ class EbanxGateway implements PaymentGatewayInterface
         throw new GatewayException('Use capturePreAuthorization to release funds');
     }
 
-    public function partialReleaseEscrow(string $escrowId, float $amount): EscrowResponse
+    public function partialReleaseEscrow(string $escrowId, Money $amount): EscrowResponse
     {
         throw new GatewayException('Use capturePreAuthorization with amount parameter');
     }

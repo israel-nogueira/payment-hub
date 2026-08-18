@@ -5,12 +5,12 @@ namespace IsraelNogueira\PaymentHub\Events;
 final class EventDispatcher
 {
     /**
-     * @var array<string, array<int, callable(PaymentEventInterface): void>>
+     * @var array<string, array<int, callable(object): void>>
      */
     private array $listeners = [];
 
     /**
-     * @param callable(PaymentEventInterface): void $listener
+     * @param callable(object): void $listener
      */
     public function addListener(string $eventName, callable $listener): void
     {
@@ -21,10 +21,15 @@ final class EventDispatcher
         $this->listeners[$eventName][] = $listener;
     }
 
-    public function dispatch(PaymentEventInterface $event): void
+    /**
+     * Aceita qualquer objeto como evento (PaymentEvent, WebhookEvent, etc.)
+     */
+    public function dispatch(object $event): void
     {
-        $eventName = $event->getEventName();
-        
+        $eventName = method_exists($event, 'getEventName')
+            ? $event->getEventName()
+            : get_class($event);
+
         if (!isset($this->listeners[$eventName])) {
             return;
         }
@@ -35,7 +40,7 @@ final class EventDispatcher
     }
 
     /**
-     * @param callable(PaymentEventInterface): void $listener
+     * @param callable(object): void $listener
      */
     public function removeListener(string $eventName, callable $listener): void
     {
@@ -65,7 +70,7 @@ final class EventDispatcher
     }
 
     /**
-     * @return array<int, callable(PaymentEventInterface): void>
+     * @return array<int, callable(object): void>
      */
     public function getListeners(string $eventName): array
     {

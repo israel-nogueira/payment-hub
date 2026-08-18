@@ -15,9 +15,6 @@ enum Currency: string
     case PEN = 'PEN';
     case UYU = 'UYU';
 
-    /**
-     * Get currency symbol
-     */
     public function symbol(): string
     {
         return match($this) {
@@ -35,9 +32,9 @@ enum Currency: string
     }
 
     /**
-     * Get currency name
+     * Renomeado de name() para label() — evita conflito com propriedade nativa de enum PHP 8.1+
      */
-    public function name(): string
+    public function label(): string
     {
         return match($this) {
             self::BRL => 'Real Brasileiro',
@@ -53,20 +50,14 @@ enum Currency: string
         };
     }
 
-    /**
-     * Get decimal places for the currency
-     */
     public function decimals(): int
     {
         return match($this) {
-            self::CLP => 0, // Chilean Peso has no decimals
-            default => 2,
+            self::CLP => 0,
+            default   => 2,
         };
     }
 
-    /**
-     * Check if currency is Latin American
-     */
     public function isLatinAmerican(): bool
     {
         return in_array($this, [
@@ -80,30 +71,23 @@ enum Currency: string
         ]);
     }
 
-    /**
-     * Format amount with currency symbol
-     */
     public function format(float $amount): string
     {
         $formatted = number_format($amount, $this->decimals(), ',', '.');
-        
+
         return match($this) {
-            self::BRL => "R$ {$formatted}",
-            self::USD, self::ARS, self::CLP, self::COP, self::MXN => "\${$formatted}",
-            self::EUR => "{$formatted} €",
-            self::GBP => "£{$formatted}",
-            self::PEN => "S/ {$formatted}",
-            self::UYU => "\$U {$formatted}",
+            self::BRL                                    => "R$ {$formatted}",
+            self::USD, self::ARS, self::CLP,
+            self::COP, self::MXN                         => "\${$formatted}",
+            self::EUR                                    => "{$formatted} €",
+            self::GBP                                    => "£{$formatted}",
+            self::PEN                                    => "S/ {$formatted}",
+            self::UYU                                    => "\$U {$formatted}",
         };
     }
 
-    /**
-     * Create from string (case-insensitive)
-     */
     public static function fromString(string $currency): self
     {
-        $normalized = strtoupper($currency);
-        
-        return self::from($normalized);
+        return self::from(strtoupper($currency));
     }
 }

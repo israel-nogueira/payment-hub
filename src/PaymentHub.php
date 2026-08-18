@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace IsraelNogueira\PaymentHub;
 
 use IsraelNogueira\PaymentHub\Contracts\PaymentGatewayInterface;
@@ -33,6 +35,7 @@ use IsraelNogueira\PaymentHub\Events\PaymentCompleted;
 use IsraelNogueira\PaymentHub\Events\PaymentFailed;
 use IsraelNogueira\PaymentHub\Events\PaymentRefunded;
 use IsraelNogueira\PaymentHub\Enums\PaymentMethod;
+use IsraelNogueira\PaymentHub\ValueObjects\Money;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
@@ -73,6 +76,8 @@ class PaymentHub
         try {
             $response = $this->gateway->createPixPayment($request);
 
+            // FIX-1: PIX criado ≠ PIX pago. Apenas dispara PaymentCreated aqui.
+            // PaymentCompleted deve ser disparado ao receber confirmação via webhook.
             $this->eventDispatcher->dispatch(new PaymentCreated(
                 $response->transactionId,
                 $response->money->amount(),
@@ -81,12 +86,13 @@ class PaymentHub
                 $request->metadata ?? []
             ));
 
-            if ($response->isSuccess()) {
-                $this->eventDispatcher->dispatch(new PaymentCompleted(
+            if ($response->isFailed()) {
+                $this->eventDispatcher->dispatch(new PaymentFailed(
                     $response->transactionId,
                     $response->money->amount(),
                     $response->getCurrency(),
                     $response->status,
+                    $response->message ?? 'PIX payment failed',
                     $request->metadata ?? []
                 ));
             }
@@ -94,7 +100,8 @@ class PaymentHub
             $this->logger->info('PIX payment created', ['transaction_id' => $response->transactionId]);
 
             return $response;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            // FIX-2: \Throwable captura também \Error (type errors, etc.) em strict_types
             $this->logger->error('PIX payment failed', ['error' => $e->getMessage()]);
             throw $e;
         }
@@ -149,7 +156,7 @@ class PaymentHub
             $this->logger->info('Credit card payment created', ['transaction_id' => $response->transactionId]);
 
             return $response;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logger->error('Credit card payment failed', ['error' => $e->getMessage()]);
             throw $e;
         }
@@ -160,7 +167,7 @@ class PaymentHub
         return $this->gateway->tokenizeCard($cardData);
     }
 
-    public function capturePreAuthorization(string $transactionId, ?float $amount = null): PaymentResponse
+    public function capturePreAuthorization(string $transactionId, ?Money $amount = null): PaymentResponse
     {
         return $this->gateway->capturePreAuthorization($transactionId, $amount);
     }
@@ -178,9 +185,30 @@ class PaymentHub
 
         try {
             $response = $this->gateway->createDebitCardPayment($request);
+
+            // FIX-3: evento de criação adicionado (estava ausente)
+            $this->eventDispatcher->dispatch(new PaymentCreated(
+                $response->transactionId,
+                $response->money->amount(),
+                $response->getCurrency(),
+                PaymentMethod::DEBIT_CARD,
+                $request->metadata ?? []
+            ));
+
+            if ($response->isFailed()) {
+                $this->eventDispatcher->dispatch(new PaymentFailed(
+                    $response->transactionId,
+                    $response->money->amount(),
+                    $response->getCurrency(),
+                    $response->status,
+                    $response->message ?? 'Debit card payment failed',
+                    $request->metadata ?? []
+                ));
+            }
+
             $this->logger->info('Debit card payment created', ['transaction_id' => $response->transactionId]);
             return $response;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logger->error('Debit card payment failed', ['error' => $e->getMessage()]);
             throw $e;
         }
@@ -194,9 +222,19 @@ class PaymentHub
 
         try {
             $response = $this->gateway->createBoleto($request);
+
+            // FIX-3: evento de criação adicionado (estava ausente)
+            $this->eventDispatcher->dispatch(new PaymentCreated(
+                $response->transactionId,
+                $response->money->amount(),
+                $response->getCurrency(),
+                PaymentMethod::BOLETO,
+                $request->metadata ?? []
+            ));
+
             $this->logger->info('Boleto created', ['transaction_id' => $response->transactionId]);
             return $response;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logger->error('Boleto creation failed', ['error' => $e->getMessage()]);
             throw $e;
         }
@@ -222,7 +260,7 @@ class PaymentHub
             $response = $this->gateway->createSubscription($request);
             $this->logger->info('Subscription created', ['subscription_id' => $response->subscriptionId]);
             return $response;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logger->error('Subscription creation failed', ['error' => $e->getMessage()]);
             throw $e;
         }
@@ -272,26 +310,48 @@ class PaymentHub
         try {
             $response = $this->gateway->refund($request);
 
+            // FIX-4: moeda vinha hardcoded 'BRL' — agora usa a moeda real da resposta
             $this->eventDispatcher->dispatch(new PaymentRefunded(
                 $request->transactionId,
                 $response->refundId,
                 $response->money->amount(),
-                'BRL',
+                $response->money->currency()->value,
                 $request->reason ?? 'Refund requested'
             ));
 
             $this->logger->info('Refund processed', ['refund_id' => $response->refundId]);
 
             return $response;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logger->error('Refund failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
 
-    public function partialRefund(string $transactionId, float $amount): RefundResponse
+    public function partialRefund(string $transactionId, Money $amount): RefundResponse
     {
-        return $this->gateway->partialRefund($transactionId, $amount);
+        // FIX-3: log e evento adicionados (estava ausente)
+        $this->logger->info('Processing partial refund', [
+            'transaction_id' => $transactionId,
+            'amount'         => $amount,
+        ]);
+
+        try {
+            $response = $this->gateway->partialRefund($transactionId, $amount);
+
+            $this->eventDispatcher->dispatch(new PaymentRefunded(
+                $transactionId,
+                $response->refundId,
+                $response->money->amount(),
+                $response->money->currency()->value,
+                'Partial refund'
+            ));
+
+            return $response;
+        } catch (\Throwable $e) {
+            $this->logger->error('Partial refund failed', ['error' => $e->getMessage()]);
+            throw $e;
+        }
     }
 
     /**
@@ -348,12 +408,12 @@ class PaymentHub
         return $this->gateway->createWallet($request);
     }
 
-    public function addBalance(string $walletId, float $amount): WalletResponse
+    public function addBalance(string $walletId, Money $amount): WalletResponse
     {
         return $this->gateway->addBalance($walletId, $amount);
     }
 
-    public function deductBalance(string $walletId, float $amount): WalletResponse
+    public function deductBalance(string $walletId, Money $amount): WalletResponse
     {
         return $this->gateway->deductBalance($walletId, $amount);
     }
@@ -363,7 +423,7 @@ class PaymentHub
         return $this->gateway->getWalletBalance($walletId);
     }
 
-    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, float $amount): TransferResponse
+    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, Money $amount): TransferResponse
     {
         return $this->gateway->transferBetweenWallets($fromWalletId, $toWalletId, $amount);
     }
@@ -380,7 +440,7 @@ class PaymentHub
         return $this->gateway->releaseEscrow($escrowId);
     }
 
-    public function partialReleaseEscrow(string $escrowId, float $amount): EscrowResponse
+    public function partialReleaseEscrow(string $escrowId, Money $amount): EscrowResponse
     {
         return $this->gateway->partialReleaseEscrow($escrowId, $amount);
     }

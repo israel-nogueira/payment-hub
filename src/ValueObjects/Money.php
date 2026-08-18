@@ -21,8 +21,16 @@ final class Money
     }
 
     /**
-     * Create from float amount
+     * Factory interna sem validação — apenas para operações internas seguras.
      */
+    private static function raw(int $cents, Currency $currency): self
+    {
+        $instance = (new \ReflectionClass(self::class))->newInstanceWithoutConstructor();
+        $instance->cents    = $cents;
+        $instance->currency = $currency;
+        return $instance;
+    }
+
     public static function from(float $amount, Currency|string $currency = Currency::BRL): self
     {
         if (is_string($currency)) {
@@ -37,14 +45,9 @@ final class Money
             throw new InvalidAmountException("Amount too large: exceeds maximum value");
         }
         
-        $cents = (int) round($amount * 100);
-        
-        return new self($cents, $currency);
+        return new self((int) round($amount * 100), $currency);
     }
 
-    /**
-     * Create from cents
-     */
     public static function fromCents(int $cents, Currency|string $currency = Currency::BRL): self
     {
         if (is_string($currency)) {
@@ -54,9 +57,6 @@ final class Money
         return new self($cents, $currency);
     }
 
-    /**
-     * Create zero amount
-     */
     public static function zero(Currency|string $currency = Currency::BRL): self
     {
         if (is_string($currency)) {
@@ -66,33 +66,21 @@ final class Money
         return new self(0, $currency);
     }
 
-    /**
-     * Get amount in cents
-     */
     public function cents(): int
     {
         return $this->cents;
     }
 
-    /**
-     * Get amount as float
-     */
     public function amount(): float
     {
         return $this->cents / 100;
     }
 
-    /**
-     * Get currency
-     */
     public function currency(): Currency
     {
         return $this->currency;
     }
 
-    /**
-     * Add another Money object
-     */
     public function add(Money $other): self
     {
         $this->assertSameCurrency($other);
@@ -106,9 +94,6 @@ final class Money
         return new self($newCents, $this->currency);
     }
 
-    /**
-     * Subtract another Money object
-     */
     public function subtract(Money $other): self
     {
         $this->assertSameCurrency($other);
@@ -122,9 +107,6 @@ final class Money
         return new self($newCents, $this->currency);
     }
 
-    /**
-     * Multiply by a factor
-     */
     public function multiply(float $multiplier): self
     {
         if ($multiplier < 0) {
@@ -140,9 +122,6 @@ final class Money
         return new self($newCents, $this->currency);
     }
 
-    /**
-     * Divide by a divisor
-     */
     public function divide(float $divisor): self
     {
         if ($divisor == 0) {
@@ -156,9 +135,6 @@ final class Money
         return new self((int) round($this->cents / $divisor), $this->currency);
     }
 
-    /**
-     * Calculate percentage
-     */
     public function percentage(float $percentage): self
     {
         if ($percentage < 0) {
@@ -168,82 +144,51 @@ final class Money
         return $this->multiply($percentage / 100);
     }
 
-    /**
-     * Check if zero
-     */
     public function isZero(): bool
     {
         return $this->cents === 0;
     }
 
-    /**
-     * Check if positive
-     */
     public function isPositive(): bool
     {
         return $this->cents > 0;
     }
 
-    /**
-     * Check if negative
-     */
     public function isNegative(): bool
     {
         return $this->cents < 0;
     }
 
-    /**
-     * Check if greater than another Money object
-     */
     public function greaterThan(Money $other): bool
     {
         $this->assertSameCurrency($other);
-        
         return $this->cents > $other->cents;
     }
 
-    /**
-     * Check if greater than or equal to another Money object
-     */
     public function greaterThanOrEqual(Money $other): bool
     {
         $this->assertSameCurrency($other);
-        
         return $this->cents >= $other->cents;
     }
 
-    /**
-     * Check if less than another Money object
-     */
     public function lessThan(Money $other): bool
     {
         $this->assertSameCurrency($other);
-        
         return $this->cents < $other->cents;
     }
 
-    /**
-     * Check if less than or equal to another Money object
-     */
     public function lessThanOrEqual(Money $other): bool
     {
         $this->assertSameCurrency($other);
-        
         return $this->cents <= $other->cents;
     }
 
-    /**
-     * Check if equal to another Money object
-     */
     public function equals(Money $other): bool
     {
         return $this->cents === $other->cents 
             && $this->currency === $other->currency;
     }
 
-    /**
-     * Split into N equal parts
-     */
     public function split(int $parts): array
     {
         if ($parts <= 0) {
@@ -251,19 +196,17 @@ final class Money
         }
 
         $baseAmount = (int) floor($this->cents / $parts);
-        $remainder = $this->cents % $parts;
+        $remainder  = $this->cents % $parts;
         
         $result = [];
         for ($i = 0; $i < $parts; $i++) {
-            $amount = $baseAmount + ($i < $remainder ? 1 : 0);
-            $result[] = new self($amount, $this->currency);
+            $result[] = new self($baseAmount + ($i < $remainder ? 1 : 0), $this->currency);
         }
         
         return $result;
     }
 
     /**
-     * Allocate amount by ratios
      * @param array<int, int> $ratios
      * @return array<int, Money>
      */
@@ -280,15 +223,14 @@ final class Money
         }
 
         $remainder = $this->cents;
-        $results = [];
+        $results   = [];
 
         foreach ($ratios as $ratio) {
-            $amount = (int) floor($this->cents * $ratio / $totalRatio);
+            $amount    = (int) floor($this->cents * $ratio / $totalRatio);
             $results[] = new self($amount, $this->currency);
             $remainder -= $amount;
         }
 
-        // Distribute remainder
         for ($i = 0; $i < $remainder; $i++) {
             $results[$i] = new self($results[$i]->cents + 1, $this->currency);
         }
@@ -296,33 +238,26 @@ final class Money
         return $results;
     }
 
-    /**
-     * Format as string with currency symbol
-     */
     public function formatted(): string
     {
         return $this->currency->format($this->amount());
     }
 
-    /**
-     * Get absolute value
-     */
     public function abs(): self
     {
         return new self(abs($this->cents), $this->currency);
     }
 
     /**
-     * Get negative value
+     * Retorna representação negativa do valor.
+     * Usa factory interna para contornar a validação do construtor,
+     * pois negativo aqui é intencional (ex: lançamentos contábeis).
      */
     public function negate(): self
     {
-        return new self(-$this->cents, $this->currency);
+        return self::raw(-$this->cents, $this->currency);
     }
 
-    /**
-     * Assert same currency
-     */
     private function assertSameCurrency(Money $other): void
     {
         if ($this->currency !== $other->currency) {
@@ -332,34 +267,25 @@ final class Money
         }
     }
 
-    /**
-     * Convert to string
-     */
     public function __toString(): string
     {
         return $this->formatted();
     }
 
-    /**
-     * For JSON serialization
-     */
     public function jsonSerialize(): array
     {
         return [
-            'amount' => $this->amount(),
-            'cents' => $this->cents,
-            'currency' => $this->currency->value,
+            'amount'    => $this->amount(),
+            'cents'     => $this->cents,
+            'currency'  => $this->currency->value,
             'formatted' => $this->formatted(),
         ];
     }
 
-    /**
-     * Convert to array
-     */
     public function toArray(): array
     {
         return [
-            'amount' => $this->amount(),
+            'amount'   => $this->amount(),
             'currency' => $this->currency->value,
         ];
     }

@@ -27,6 +27,10 @@ use IsraelNogueira\PaymentHub\DataObjects\Responses\EscrowResponse;
 use IsraelNogueira\PaymentHub\DataObjects\Responses\PaymentLinkResponse;
 use IsraelNogueira\PaymentHub\DataObjects\Responses\CustomerResponse;
 use IsraelNogueira\PaymentHub\DataObjects\Responses\BalanceResponse;
+use IsraelNogueira\PaymentHub\Enums\PaymentStatus;
+use IsraelNogueira\PaymentHub\Enums\Currency;
+use IsraelNogueira\PaymentHub\ValueObjects\Money;
+use IsraelNogueira\PaymentHub\Exceptions\GatewayException;
 
 class FakeBankGateway implements PaymentGatewayInterface
 {
@@ -38,20 +42,74 @@ class FakeBankGateway implements PaymentGatewayInterface
         $this->storage = new FakeBankStorage($storagePath);
     }
 
+    // ==================== PAGAMENTO GENÉRICO ====================
+
+    public function createPayment(array $data): PaymentResponse
+    {
+        if (isset($data['pixKey']) || ($data['paymentMethod'] ?? null) === 'pix') {
+            $request = PixPaymentRequest::create(
+                amount: $data['amount'] ?? 0,
+                currency: $data['currency'] ?? 'BRL',
+                description: $data['description'] ?? null,
+                customerName: $data['customerName'] ?? null,
+                customerDocument: $data['customerDocument'] ?? null,
+                customerEmail: $data['customerEmail'] ?? null,
+                expiresInMinutes: $data['expiresInMinutes'] ?? null,
+                metadata: $data['metadata'] ?? null
+            );
+            return $this->createPixPayment($request);
+        }
+
+        if (isset($data['dueDate']) && !isset($data['cardNumber']) && !isset($data['cardToken'])) {
+            $request = BoletoPaymentRequest::create(
+                amount: $data['amount'] ?? 0,
+                currency: $data['currency'] ?? 'BRL',
+                dueDate: $data['dueDate'] ?? null,
+                description: $data['description'] ?? null,
+                customerName: $data['customerName'] ?? null,
+                customerDocument: $data['customerDocument'] ?? null,
+                customerEmail: $data['customerEmail'] ?? null,
+                customerAddress: $data['customerAddress'] ?? null
+            );
+            return $this->createBoleto($request);
+        }
+
+        if (isset($data['cardNumber']) || isset($data['cardToken'])) {
+            $request = CreditCardPaymentRequest::create(
+                amount: $data['amount'] ?? 0,
+                currency: $data['currency'] ?? 'BRL',
+                cardToken: $data['cardToken'] ?? null,
+                cardNumber: $data['cardNumber'] ?? null,
+                cardHolderName: $data['cardHolderName'] ?? null,
+                cardExpiryMonth: $data['cardExpiryMonth'] ?? null,
+                cardExpiryYear: $data['cardExpiryYear'] ?? null,
+                cardCvv: $data['cardCvv'] ?? null,
+                installments: $data['installments'] ?? 1,
+                capture: $data['capture'] ?? true,
+                customerName: $data['customerName'] ?? null,
+                customerDocument: $data['customerDocument'] ?? null,
+                customerEmail: $data['customerEmail'] ?? null,
+                billingAddress: $data['billingAddress'] ?? null
+            );
+            return $this->createCreditCardPayment($request);
+        }
+
+        throw new GatewayException('Invalid payment data: unable to determine payment method');
+    }
+
     // ==================== PIX ====================
-    
     public function createPixPayment(PixPaymentRequest $request): PaymentResponse
     {
         $transactionId = 'FAKE_PIX_' . uniqid();
         
         $data = [
             'type' => 'pix',
-            'status' => 'approved',
-            'amount' => $request->getAmount(),
-            'currency' => $request->getCurrency(),
+            'status' => 'pending',
+            'amount' => $request->money->amount(),
+            'currency' => $request->money->currency()->value,
             'customer_name' => $request->customerName,
-            'customer_document' => $request->getCustomerDocument(),
-            'customer_email' => $request->getCustomerEmail(),
+            'customer_document' => $request->customerDocument?->value(),
+            'customer_email' => $request->customerEmail?->value(),
             'description' => $request->description,
             'qr_code' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
             'qr_code_text' => '00020126330014BR.GOV.BCB.PIX0111' . $transactionId,
@@ -62,15 +120,16 @@ class FakeBankGateway implements PaymentGatewayInterface
         return PaymentResponse::create(
             success: true,
             transactionId: $transactionId,
-            status: 'approved',
-            amount: $request->getAmount(),
-            currency: $request->getCurrency(),
+            status: 'pending',
+            amount: $request->money->amount(),
+            currency: $request->money->currency()->value,
             message: 'PIX payment created successfully',
             rawResponse: $data,
             metadata: $request->metadata
         );
     }
 
+    
     public function getPixQrCode(string $transactionId): string
     {
         $transaction = $this->storage->get('transactions', $transactionId);
@@ -89,8 +148,8 @@ class FakeBankGateway implements PaymentGatewayInterface
     {
         $transactionId = 'FAKE_CC_' . uniqid();
         
-        // Detectar número do cartão (pode ser CardNumber object ou string)
-        $cardNumber = $request->cardNumber?->value() ?? $request->cardNumber;
+        // Número do cartão (só existe quando não veio via token)
+        $cardNumber = $request->cardNumber?->value() ?? '';
         
         $data = [
             'type' => 'credit_card',
@@ -100,7 +159,7 @@ class FakeBankGateway implements PaymentGatewayInterface
             'installments' => $request->installments,
             'card_last4' => substr($cardNumber, -4),
             'card_brand' => $this->detectCardBrand($cardNumber),
-            'customer_email' => $request->customerEmail?->value() ?? $request->customerEmail,
+            'customer_email' => $request->customerEmail?->value(),
             'description' => $request->description,
         ];
         
@@ -136,14 +195,14 @@ class FakeBankGateway implements PaymentGatewayInterface
         return $token;
     }
 
-    public function capturePreAuthorization(string $transactionId, ?float $amount = null): PaymentResponse
+    public function capturePreAuthorization(string $transactionId, ?Money $amount = null): PaymentResponse
     {
         $transaction = $this->storage->get('transactions', $transactionId);
         
         if ($transaction) {
             $this->storage->update('transactions', $transactionId, [
                 'status' => 'captured',
-                'captured_amount' => $amount ?? $transaction['amount']
+                'captured_amount' => $amount?->amount() ?? $transaction['amount']
             ]);
         }
         
@@ -151,12 +210,13 @@ class FakeBankGateway implements PaymentGatewayInterface
             success: true,
             transactionId: $transactionId,
             status: 'captured',
-            amount: $amount,
-            currency: 'BRL',
+            amount: $amount?->amount() ?? $transaction['amount'] ?? 0.0,
+            currency: $amount?->currency()->value ?? 'BRL',
             message: 'Pre-authorization captured',
             rawResponse: ['captured' => true]
         );
     }
+    
 
     public function cancelPreAuthorization(string $transactionId): PaymentResponse
     {
@@ -184,14 +244,16 @@ class FakeBankGateway implements PaymentGatewayInterface
     public function createDebitCardPayment(DebitCardPaymentRequest $request): PaymentResponse
     {
         $transactionId = 'FAKE_DC_' . uniqid();
+
+        $cardNumber = $request->cardNumber?->value() ?? '';
         
         $data = [
             'type' => 'debit_card',
             'status' => 'approved',
-            'amount' => $request->amount,
-            'currency' => $request->currency,
-            'card_last4' => substr($request->cardNumber, -4),
-            'card_brand' => $this->detectCardBrand($request->cardNumber),
+            'amount' => $request->money->amount(),
+            'currency' => $request->money->currency()->value,
+            'card_last4' => substr($cardNumber, -4),
+            'card_brand' => $this->detectCardBrand($cardNumber),
         ];
         
         $this->storage->save('transactions', $transactionId, $data);
@@ -200,8 +262,8 @@ class FakeBankGateway implements PaymentGatewayInterface
             success: true,
             transactionId: $transactionId,
             status: 'approved',
-            amount: $request->amount,
-            currency: $request->currency,
+            amount: $request->money->amount(),
+            currency: $request->money->currency()->value,
             message: 'Debit card payment approved',
             rawResponse: $data
         );
@@ -366,19 +428,20 @@ class FakeBankGateway implements PaymentGatewayInterface
 
     // ==================== TRANSAÇÕES ====================
     
-	public function getTransactionStatus(string $transactionId): TransactionStatusResponse
-	{
-		$transaction = $this->storage->get('transactions', $transactionId);
-		
-		return TransactionStatusResponse::create(
-			success: $transaction !== null,
-			transactionId: $transactionId,
-			status: $transaction['status'] ?? 'not_found',
-			amount: $transaction['amount'] ?? null,
-			currency: $transaction['currency'] ?? 'BRL',
-			rawResponse: $transaction
-		);
-	}
+    public function getTransactionStatus(string $transactionId): TransactionStatusResponse
+    {
+        $transaction = $this->storage->get('transactions', $transactionId);
+        
+        return TransactionStatusResponse::create(
+            success: $transaction !== null,
+            transactionId: $transactionId,
+            status: $transaction['status'] ?? 'not_found',
+            amount: $transaction['amount'] ?? null,
+            currency: $transaction['currency'] ?? 'BRL',
+            rawResponse: $transaction ?? []
+        );
+    }
+
     public function listTransactions(array $filters = []): array
     {
         return $this->storage->find('transactions', $filters);
@@ -386,52 +449,50 @@ class FakeBankGateway implements PaymentGatewayInterface
 
     // ==================== ESTORNOS E CHARGEBACKS ====================
     
-	public function refund(RefundRequest $request): RefundResponse
-	{
-		$refundId = 'FAKE_REFUND_' . uniqid();
-		
-		// Busca transação original
-		$transaction = $this->storage->get('transactions', $request->transactionId);
-		
-		// Verifica se é estorno parcial
-		$isPartialRefund = $request->isPartialRefund();
-		
-		// Define valor do estorno
-		$refundAmount = $isPartialRefund 
-			? $request->amount 
-			: ($transaction['amount'] ?? 0.0);
-		
-		$data = [
-			'transaction_id' => $request->transactionId,
-			'amount' => $refundAmount,
-			'original_amount' => $transaction['amount'] ?? null,
-			'refund_type' => $isPartialRefund ? 'partial' : 'full',
-			'reason' => $request->reason ?? null,
-			'status' => 'refunded',
-		];
-		
-		$this->storage->save('refunds', $refundId, $data);
-		
-		// Usa o factory method ::create()
-		return RefundResponse::create(
-			success: true,
-			refundId: $refundId,
-			transactionId: $request->transactionId,
-			amount: $refundAmount,
-			status: 'refunded',
-			currency: $transaction['currency'] ?? 'BRL',
-			message: $isPartialRefund ? 'Partial refund processed' : 'Full refund processed',
-			rawResponse: $data
-		);
-	}
+    public function refund(RefundRequest $request): RefundResponse
+    {
+        $refundId = 'FAKE_REFUND_' . uniqid();
+        
+        // Busca transação original
+        $transaction = $this->storage->get('transactions', $request->transactionId);
+        
+        // Verifica se é estorno parcial
+        $isPartialRefund = $request->isPartialRefund();
+        
+        // Define valor do estorno
+        $refundAmount = $isPartialRefund 
+            ? $request->getAmount() 
+            : ($transaction['amount'] ?? 0.0);
+        
+        $data = [
+            'transaction_id' => $request->transactionId,
+            'amount' => $refundAmount,
+            'original_amount' => $transaction['amount'] ?? null,
+            'refund_type' => $isPartialRefund ? 'partial' : 'full',
+            'reason' => $request->reason ?? null,
+            'status' => 'refunded',
+        ];
+        
+        $this->storage->save('refunds', $refundId, $data);
+        
+        return new RefundResponse(
+            success: true,
+            refundId: $refundId,
+            transactionId: $request->transactionId,
+            money: Money::from($refundAmount, Currency::BRL),
+            status: PaymentStatus::REFUNDED,
+            message: $isPartialRefund ? 'Partial refund processed' : 'Full refund processed',
+            rawResponse: $data
+        );
+    }
 
-    public function partialRefund(string $transactionId, float $amount): RefundResponse
+    public function partialRefund(string $transactionId, Money $amount): RefundResponse
     {
         $refundId = 'FAKE_REFUND_' . uniqid();
         
         $data = [
             'transaction_id' => $transactionId,
-            'amount' => $amount,
+            'amount' => $amount->amount(),
             'status' => 'refunded',
             'type' => 'partial',
         ];
@@ -442,8 +503,8 @@ class FakeBankGateway implements PaymentGatewayInterface
             success: true,
             refundId: $refundId,
             transactionId: $transactionId,
-            amount: $amount,
-            status: 'refunded',
+            money: $amount,
+            status: PaymentStatus::REFUNDED,
             message: 'Partial refund processed',
             rawResponse: $data
         );
@@ -476,7 +537,7 @@ class FakeBankGateway implements PaymentGatewayInterface
         $data = [
             'type' => 'split_payment',
             'status' => 'approved',
-            'amount' => $request->amount,
+            'amount' => $request->money->amount(),
             'splits' => $request->splits ?? [],
         ];
         
@@ -486,8 +547,8 @@ class FakeBankGateway implements PaymentGatewayInterface
             success: true,
             transactionId: $transactionId,
             status: 'approved',
-            amount: $request->amount,
-            currency: 'BRL',
+            amount: $request->money->amount(),
+            currency: $request->money->currency()->value,
             message: 'Split payment created',
             rawResponse: $data
         );
@@ -574,11 +635,10 @@ class FakeBankGateway implements PaymentGatewayInterface
     public function createWallet(WalletRequest $request): WalletResponse
     {
         $walletId = 'FAKE_WALLET_' . uniqid();
-        
         $data = [
             'customer_id' => $request->customerId ?? null,
             'balance' => 0.0,
-            'currency' => $request->currency ?? 'BRL',
+            'currency' => $request->currency->value,
         ];
         
         $this->storage->save('wallets', $walletId, $data);
@@ -587,18 +647,18 @@ class FakeBankGateway implements PaymentGatewayInterface
             success: true,
             walletId: $walletId,
             balance: 0.0,
-            currency: $request->currency ?? 'BRL',
+            currency: $request->currency->value,
             message: 'Wallet created',
             rawResponse: $data
         );
     }
 
-    public function addBalance(string $walletId, float $amount): WalletResponse
+    public function addBalance(string $walletId, Money $amount): WalletResponse
     {
         $wallet = $this->storage->get('wallets', $walletId);
         
         if ($wallet) {
-            $newBalance = ($wallet['balance'] ?? 0) + $amount;
+            $newBalance = ($wallet['balance'] ?? 0) + $amount->amount();
             $this->storage->update('wallets', $walletId, ['balance' => $newBalance]);
             
             return new WalletResponse(
@@ -621,12 +681,12 @@ class FakeBankGateway implements PaymentGatewayInterface
         );
     }
 
-    public function deductBalance(string $walletId, float $amount): WalletResponse
+    public function deductBalance(string $walletId, Money $amount): WalletResponse
     {
         $wallet = $this->storage->get('wallets', $walletId);
         
         if ($wallet) {
-            $newBalance = ($wallet['balance'] ?? 0) - $amount;
+            $newBalance = ($wallet['balance'] ?? 0) - $amount->amount();
             $this->storage->update('wallets', $walletId, ['balance' => $newBalance]);
             
             return new WalletResponse(
@@ -663,7 +723,7 @@ class FakeBankGateway implements PaymentGatewayInterface
         );
     }
 
-    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, float $amount): TransferResponse
+    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, Money $amount): TransferResponse
     {
         $transferId = 'FAKE_TRANSFER_' . uniqid();
         
@@ -673,7 +733,7 @@ class FakeBankGateway implements PaymentGatewayInterface
         $data = [
             'from_wallet_id' => $fromWalletId,
             'to_wallet_id' => $toWalletId,
-            'amount' => $amount,
+            'amount' => $amount->amount(),
             'status' => 'completed',
         ];
         
@@ -682,8 +742,8 @@ class FakeBankGateway implements PaymentGatewayInterface
         return new TransferResponse(
             success: true,
             transferId: $transferId,
-            money: \IsraelNogueira\PaymentHub\ValueObjects\Money::from($amount, \IsraelNogueira\PaymentHub\Enums\Currency::BRL),
-            status: \IsraelNogueira\PaymentHub\Enums\PaymentStatus::fromString('completed'),
+            money: $amount,
+            status: PaymentStatus::fromString('completed'),
             message: 'Transfer completed',
             rawResponse: $data
         );
@@ -731,12 +791,12 @@ class FakeBankGateway implements PaymentGatewayInterface
         );
     }
 
-    public function partialReleaseEscrow(string $escrowId, float $amount): EscrowResponse
+    public function partialReleaseEscrow(string $escrowId, Money $amount): EscrowResponse
     {
         $escrow = $this->storage->get('escrows', $escrowId);
         
         if ($escrow) {
-            $newAmount = ($escrow['amount'] ?? 0) - $amount;
+            $newAmount = ($escrow['amount'] ?? 0) - $amount->amount();
             $this->storage->update('escrows', $escrowId, [
                 'amount' => $newAmount,
                 'status' => 'partially_released'
@@ -746,7 +806,7 @@ class FakeBankGateway implements PaymentGatewayInterface
         return new EscrowResponse(
             success: true,
             escrowId: $escrowId,
-            amount: $amount,
+            amount: $amount->amount(),
             status: 'partially_released',
             message: 'Escrow partially released',
             rawResponse: []
@@ -778,7 +838,7 @@ class FakeBankGateway implements PaymentGatewayInterface
         $transferId = 'FAKE_TRANSFER_' . uniqid();
         
         $data = [
-            'amount' => $request->amount,
+            'amount' => $request->money->amount(),
             'recipient_id' => $request->recipientId,
             'status' => 'completed',
         ];
@@ -788,8 +848,8 @@ class FakeBankGateway implements PaymentGatewayInterface
         return new TransferResponse(
             success: true,
             transferId: $transferId,
-            money: \IsraelNogueira\PaymentHub\ValueObjects\Money::from($request->amount, \IsraelNogueira\PaymentHub\Enums\Currency::BRL),
-            status: \IsraelNogueira\PaymentHub\Enums\PaymentStatus::fromString('completed'),
+            money: $request->money,
+            status: PaymentStatus::fromString('completed'),
             message: 'Transfer completed',
             rawResponse: $data
         );
@@ -800,7 +860,7 @@ class FakeBankGateway implements PaymentGatewayInterface
         $transferId = 'FAKE_TRANSFER_' . uniqid();
         
         $data = [
-            'amount' => $request->amount,
+            'amount' => $request->money->amount(),
             'recipient_id' => $request->recipientId,
             'status' => 'scheduled',
             'scheduled_date' => $date,
@@ -811,8 +871,8 @@ class FakeBankGateway implements PaymentGatewayInterface
         return new TransferResponse(
             success: true,
             transferId: $transferId,
-            money: \IsraelNogueira\PaymentHub\ValueObjects\Money::from($request->amount, \IsraelNogueira\PaymentHub\Enums\Currency::BRL),
-            status: \IsraelNogueira\PaymentHub\Enums\PaymentStatus::fromString('scheduled'),
+            money: $request->money,
+            status: PaymentStatus::fromString('scheduled'),
             message: 'Transfer scheduled',
             rawResponse: $data
         );
@@ -827,14 +887,14 @@ class FakeBankGateway implements PaymentGatewayInterface
         }
         
         $money = isset($transfer['amount']) 
-            ? \IsraelNogueira\PaymentHub\ValueObjects\Money::from($transfer['amount'], \IsraelNogueira\PaymentHub\Enums\Currency::BRL)
+            ? Money::from($transfer['amount'], Currency::BRL)
             : null;
         
         return new TransferResponse(
             success: true,
             transferId: $transferId,
             money: $money,
-            status: \IsraelNogueira\PaymentHub\Enums\PaymentStatus::fromString('cancelled'),
+            status: PaymentStatus::fromString('cancelled'),
             message: 'Scheduled transfer cancelled',
             rawResponse: []
         );
@@ -904,9 +964,9 @@ class FakeBankGateway implements PaymentGatewayInterface
         $customerId = 'FAKE_CUST_' . uniqid();
         
         $data = [
-            'name' => $request->name ?? null,
-            'email' => $request->email ?? null,
-            'document' => $request->document ?? null,
+            'name' => $request->name,
+            'email' => $request->email->value(),
+            'document' => $request->document?->value(),
             'phone' => $request->phone ?? null,
         ];
         

@@ -138,17 +138,55 @@ class AsaasGateway implements PaymentGatewayInterface
         return $cycleMap[strtolower($interval)] ?? 'MONTHLY';
     }
 
+    // ==================== PAGAMENTO GENÉRICO ====================
+
+    /**
+     * Asaas possui endpoint genérico /v3/payments que aceita billingType
+     * UNDEFINED (cliente escolhe a forma na fatura), BOLETO, PIX ou
+     * CREDIT_CARD. Diferente do Adyen, dá pra implementar de verdade.
+     */
+    public function createPayment(array $data): PaymentResponse
+    {
+        $paymentData = [
+            'customer' => $data['customer_id'],
+            'billingType' => $data['billing_type'] ?? 'UNDEFINED',
+            'value' => $data['amount'],
+            'dueDate' => $data['due_date'] ?? date('Y-m-d'),
+        ];
+
+        if (isset($data['description'])) {
+            $paymentData['description'] = $data['description'];
+        }
+
+        $response = $this->request('POST', '/payments', $paymentData);
+
+        $amount = $response['value'] ?? $data['amount'];
+        $money = Money::from($amount, Currency::BRL);
+
+        return new PaymentResponse(
+            success: true,
+            transactionId: $response['id'],
+            status: $this->mapAsaasStatus($response['status'] ?? 'PENDING'),
+            money: $money,
+            message: 'Payment created successfully',
+            rawResponse: $response,
+            metadata: [
+                'invoice_url' => $response['invoiceUrl'] ?? null,
+            ]
+        );
+    }
+
     // ==================== CLIENTES ====================
     
     public function createCustomer(CustomerRequest $request): CustomerResponse
     {
         $data = [
             'name' => $request->name,
-            'email' => $request->email,
+            'email' => $request->email->value(),
         ];
 
-        if ($request->documentNumber) {
-            $data['cpfCnpj'] = preg_replace('/\D/', '', $request->documentNumber);
+        if ($request->document) {
+            $data['cpfCnpj'] = preg_replace('/\D/', '', $request->document->value());
         }
 
         if ($request->phone) {
@@ -274,7 +312,7 @@ class AsaasGateway implements PaymentGatewayInterface
         ];
 
         if ($request->customerDocument) {
-            $customerData['cpfCnpj'] = $request->customerDocument->value();
+            $customerData['cpfCnpj'] = $request->customerDocument;
         }
 
         $customerResponse = $this->request('POST', '/customers', $customerData);
@@ -313,7 +351,7 @@ class AsaasGateway implements PaymentGatewayInterface
             $paymentData['creditCardHolderInfo'] = [
                 'name' => $request->customerName ?? $request->cardHolderName,
                 'email' => $request->customerEmail?->value() ?? 'cliente@example.com',
-                'cpfCnpj' => ($request->customerDocument?->value() ?? '00000000000'),
+                'cpfCnpj' => ($request->customerDocument ?? '00000000000'),
                 'postalCode' => preg_replace('/\D/', '', $request->billingAddress['zipcode'] ?? '00000000'),
                 'addressNumber' => $request->billingAddress['number'] ?? 'S/N',
                 'phone' => preg_replace('/\D/', '', $request->billingAddress['phone'] ?? '0000000000'),
@@ -367,9 +405,24 @@ class AsaasGateway implements PaymentGatewayInterface
         return $response['creditCardToken'];
     }
 
-    public function capturePreAuthorization(string $transactionId, ?float $amount = null): PaymentResponse
+    public function capturePreAuthorization(string $transactionId, ?Money $amount = null): PaymentResponse
     {
-        throw new GatewayException('Pre-authorization capture not directly supported by Asaas');
+        // Asaas não aceita valor no corpo: a captura sempre efetiva o total
+        // que foi reservado na pré-autorização (parâmetro $amount é ignorado).
+        $response = $this->request('POST', "/payments/{$transactionId}/captureAuthorizedPayment");
+
+        $money = isset($response['value'])
+            ? Money::from($response['value'], Currency::BRL)
+            : null;
+
+        return new PaymentResponse(
+            success: true,
+            transactionId: $response['id'] ?? $transactionId,
+            status: $this->mapAsaasStatus($response['status'] ?? 'CONFIRMED'),
+            money: $money,
+            message: 'Pre-authorization captured successfully',
+            rawResponse: $response
+        );
     }
 
     public function cancelPreAuthorization(string $transactionId): PaymentResponse
@@ -615,10 +668,9 @@ class AsaasGateway implements PaymentGatewayInterface
         );
     }
 
-    public function partialRefund(string $transactionId, float $amount): RefundResponse
+    public function partialRefund(string $transactionId, Money $amount): RefundResponse
     {
-        $money = Money::from($amount, Currency::BRL);
-        return $this->refund(new RefundRequest($transactionId, $money, 'Partial refund'));
+        return $this->refund(new RefundRequest($transactionId, $amount, 'Partial refund'));
     }
 
     public function getChargebacks(array $filters = []): array
@@ -634,6 +686,9 @@ class AsaasGateway implements PaymentGatewayInterface
 
     public function disputeChargeback(string $chargebackId, array $evidence): PaymentResponse
     {
+        // TODO: GUIA A FAZER
+        // Asaas TEM endpoint real: POST /v3/chargebacks/{id}/dispute
+        // Confirmar body params (evidências/documentos) antes de implementar.
         throw new GatewayException('Chargeback disputes must be handled through Asaas dashboard');
     }
 
@@ -652,10 +707,10 @@ class AsaasGateway implements PaymentGatewayInterface
         $data = [
             'name' => $request->name,
             'email' => $request->email,
-            'cpfCnpj' => preg_replace('/\D/', '', $request->document),
+            'cpfCnpj' => preg_replace('/\D/', '', $request->documentNumber),
             'companyType' => $request->metadata['company_type'] ?? 'MEI',
-            'phone' => preg_replace('/\D/', '', $request->phone ?? ''),
-            'mobilePhone' => preg_replace('/\D/', '', $request->mobile_phone ?? ''),
+            'mobilePhone' => preg_replace('/\D/', '', $request->phone ?? ''),
+            'incomeValue' => $request->incomeValue,
             'address' => $request->address['street'] ?? '',
             'addressNumber' => $request->address['number'] ?? '',
             'province' => $request->address['district'] ?? '',
@@ -708,12 +763,12 @@ class AsaasGateway implements PaymentGatewayInterface
         throw new GatewayException('Wallets not supported by Asaas - use accounts instead');
     }
 
-    public function addBalance(string $walletId, float $amount): WalletResponse
+    public function addBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Wallets not supported by Asaas');
     }
 
-    public function deductBalance(string $walletId, float $amount): WalletResponse
+    public function deductBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Wallets not supported by Asaas');
     }
@@ -723,21 +778,31 @@ class AsaasGateway implements PaymentGatewayInterface
         throw new GatewayException('Wallets not supported by Asaas - use getBalance() instead');
     }
 
-    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, float $amount): TransferResponse
+    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, Money $amount): TransferResponse
     {
         throw new GatewayException('Wallets not supported by Asaas - use transfer() instead');
     }
 
     // ==================== ESCROW ====================
-    
+    // TODO: GUIA A FAZER
+    // A doc real do Asaas tem uma seção "Conta Escrow" própria, com endpoints
+    // aparentemente por SUBCONTA (ex: configuração de escrow padrão, salvar/
+    // atualizar config por subconta, "Finish payment escrow in the Escrow
+    // Account"). O endpoint usado abaixo (/payments/{id}/escrowRelease) NÃO
+    // foi confirmado na documentação oficial - pode estar incorreto.
+    // Verificar em: https://docs.asaas.com/reference/save-or-update-escrow-account-configuration-for-subaccount
+    // e https://docs.asaas.com/reference/finish-payment-escrow-in-the-escrow-account
+    // antes de usar em produção.
+
     public function holdInEscrow(EscrowRequest $request): EscrowResponse
     {
-        // Asaas tem Conta Escrow mas funciona diferente
+        // TODO: GUIA A FAZER - confirmar endpoint de criação/configuração de escrow
         throw new GatewayException('Escrow must be configured per sub-account in Asaas');
     }
 
     public function releaseEscrow(string $escrowId): EscrowResponse
     {
+        // TODO: GUIA A FAZER - endpoint abaixo não confirmado na doc oficial
         $response = $this->request('POST', "/payments/{$escrowId}/escrowRelease");
 
         return new EscrowResponse(
@@ -750,13 +815,15 @@ class AsaasGateway implements PaymentGatewayInterface
         );
     }
 
-    public function partialReleaseEscrow(string $escrowId, float $amount): EscrowResponse
+    public function partialReleaseEscrow(string $escrowId, Money $amount): EscrowResponse
     {
+        // TODO: GUIA A FAZER - confirmar se Asaas suporta liberação parcial
         throw new GatewayException('Partial escrow release not supported by Asaas');
     }
 
     public function cancelEscrow(string $escrowId): EscrowResponse
     {
+        // TODO: GUIA A FAZER - confirmar endpoint de cancelamento de escrow
         throw new GatewayException('Escrow cancellation not supported by Asaas');
     }
 
@@ -771,6 +838,7 @@ class AsaasGateway implements PaymentGatewayInterface
         // Transferência por PIX
         if (isset($request->metadata['pix_key'])) {
             $data['pixAddressKey'] = $request->metadata['pix_key'];
+            $data['pixAddressKeyType'] = $request->metadata['pix_key_type'] ?? 'EVP';
             $endpoint = '/transfers';
         } else {
             // Transferência bancária
@@ -928,6 +996,12 @@ class AsaasGateway implements PaymentGatewayInterface
     
     public function registerWebhook(string $url, array $events): array
     {
+        // TODO: GUIA A FAZER
+        // Endpoint POST /v3/webhooks existe, mas os campos exatos e a
+        // afirmação "todos os eventos são enviados para todos os webhooks"
+        // não foram confirmados contra a doc oficial. A doc lista um campo
+        // "events" na criação de webhook (ver Criar novo webhook), o que
+        // pode contradizer o comentário abaixo. Confirmar antes de usar.
         $data = [
             'name' => 'Webhook - ' . date('Y-m-d H:i:s'),
             'url' => $url,
@@ -966,6 +1040,9 @@ class AsaasGateway implements PaymentGatewayInterface
     
     public function getBalance(): BalanceResponse
     {
+        // TODO: GUIA A FAZER - endpoint e nome dos campos de resposta
+        // (balance vs totalBalance) não confirmados contra a doc oficial
+        // "Recuperar saldo da conta".
         $response = $this->request('GET', '/finance/balance');
 
         return new BalanceResponse(
@@ -985,6 +1062,11 @@ class AsaasGateway implements PaymentGatewayInterface
 
     public function anticipateReceivables(array $transactionIds): PaymentResponse
     {
+        // TODO: GUIA A FAZER
+        // A doc oficial ("Solicitar antecipação") pode exigir mais campos
+        // além de "payment" (ex: valor desejado). Também só processa
+        // $transactionIds[0], ignorando o restante do array recebido -
+        // confirmar se o endpoint aceita múltiplas cobranças de uma vez.
         $data = [
             'payment' => $transactionIds[0] ?? null,
         ];

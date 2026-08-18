@@ -30,6 +30,7 @@ use IsraelNogueira\PaymentHub\DataObjects\Responses\PaymentLinkResponse;
 use IsraelNogueira\PaymentHub\DataObjects\Responses\CustomerResponse;
 use IsraelNogueira\PaymentHub\DataObjects\Responses\BalanceResponse;
 use IsraelNogueira\PaymentHub\Exceptions\GatewayException;
+use IsraelNogueira\PaymentHub\ValueObjects\Money;
 
 /**
  * ============================================================
@@ -1099,6 +1100,12 @@ class BofACashProGateway implements PaymentGatewayInterface
         throw new GatewayException('PIX is not supported by BofA CashPro.');
     }
 
+    /** @throws GatewayException Sempre — CashPro não tem endpoint de pagamento genérico. Use transfer() ou os métodos específicos (sendZelle/sendACH/sendWire). */
+    public function createPayment(array $data): PaymentResponse
+    {
+        throw new GatewayException('Generic createPayment is not supported by BofA CashPro. Use transfer() or sendZelle()/sendACH()/sendWire().');
+    }
+
     /** @throws GatewayException Sempre — CashPro não processa cartão de crédito. */
     public function createCreditCardPayment(CreditCardPaymentRequest $request): PaymentResponse
     {
@@ -1112,7 +1119,7 @@ class BofACashProGateway implements PaymentGatewayInterface
     }
 
     /** @throws GatewayException Sempre */
-    public function capturePreAuthorization(string $transactionId, ?float $amount = null): PaymentResponse
+    public function capturePreAuthorization(string $transactionId, ?Money $amount = null): PaymentResponse
     {
         throw new GatewayException('Pre-authorization is not supported by BofA CashPro.');
     }
@@ -1184,7 +1191,7 @@ class BofACashProGateway implements PaymentGatewayInterface
     }
 
     /** @throws GatewayException Sempre */
-    public function partialRefund(string $transactionId, float $amount): RefundResponse
+    public function partialRefund(string $transactionId, Money $amount): RefundResponse
     {
         throw new GatewayException('Partial refunds are not supported by BofA CashPro.');
     }
@@ -1252,13 +1259,13 @@ class BofACashProGateway implements PaymentGatewayInterface
     }
 
     /** @throws GatewayException Sempre */
-    public function addBalance(string $walletId, float $amount): WalletResponse
+    public function addBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Wallets are managed at the application layer.');
     }
 
     /** @throws GatewayException Sempre */
-    public function deductBalance(string $walletId, float $amount): WalletResponse
+    public function deductBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Wallets are managed at the application layer.');
     }
@@ -1270,7 +1277,7 @@ class BofACashProGateway implements PaymentGatewayInterface
     }
 
     /** @throws GatewayException Sempre */
-    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, float $amount): TransferResponse
+    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, Money $amount): TransferResponse
     {
         throw new GatewayException('Wallets are managed at the application layer.');
     }
@@ -1288,7 +1295,7 @@ class BofACashProGateway implements PaymentGatewayInterface
     }
 
     /** @throws GatewayException Sempre */
-    public function partialReleaseEscrow(string $escrowId, float $amount): EscrowResponse
+    public function partialReleaseEscrow(string $escrowId, Money $amount): EscrowResponse
     {
         throw new GatewayException('Escrow is not supported by BofA CashPro.');
     }

@@ -6,12 +6,6 @@ namespace IsraelNogueira\PaymentHub\Webhooks;
 
 use DateTimeImmutable;
 
-/**
- * Representa o payload de um webhook recebido
- *
- * Encapsula todos os dados relacionados a um webhook, incluindo
- * headers, body, timestamp e metadados de processamento.
- */
 class WebhookPayload
 {
     private string $id;
@@ -21,16 +15,8 @@ class WebhookPayload
     private DateTimeImmutable $receivedAt;
     private ?string $signature;
     private ?string $gateway;
+    private string $rawBody; // ✅ preservado para validação HMAC
 
-    /**
-     * @param string $id ID único do webhook
-     * @param string $eventType Tipo do evento (ex: 'payment.completed')
-     * @param array $data Dados do payload
-     * @param array $headers Headers HTTP recebidos
-     * @param DateTimeImmutable|null $receivedAt Timestamp de recebimento
-     * @param string|null $signature Assinatura para validação
-     * @param string|null $gateway Gateway de origem (ex: 'stripe', 'mercadopago')
-     */
     public function __construct(
         string $id,
         string $eventType,
@@ -38,26 +24,19 @@ class WebhookPayload
         array $headers = [],
         ?DateTimeImmutable $receivedAt = null,
         ?string $signature = null,
-        ?string $gateway = null
+        ?string $gateway = null,
+        string $rawBody = ''
     ) {
-        $this->id = $id;
-        $this->eventType = $eventType;
-        $this->data = $data;
-        $this->headers = $headers;
+        $this->id         = $id;
+        $this->eventType  = $eventType;
+        $this->data       = $data;
+        $this->headers    = $headers;
         $this->receivedAt = $receivedAt ?? new DateTimeImmutable();
-        $this->signature = $signature;
-        $this->gateway = $gateway;
+        $this->signature  = $signature;
+        $this->gateway    = $gateway;
+        $this->rawBody    = $rawBody;
     }
 
-    /**
-     * Cria um WebhookPayload a partir de uma requisição HTTP
-     *
-     * @param string $rawBody Corpo bruto da requisição
-     * @param array $headers Headers da requisição
-     * @param string|null $gateway Nome do gateway
-     * @return self
-     * @throws \InvalidArgumentException Se o payload for inválido
-     */
     public static function fromRequest(
         string $rawBody,
         array $headers = [],
@@ -77,17 +56,18 @@ class WebhookPayload
             );
         }
 
-        $signature = $headers['X-Webhook-Signature'] 
-            ?? $headers['X-Hub-Signature-256'] 
+        $signature = $headers['X-Webhook-Signature']
+            ?? $headers['X-Hub-Signature-256']
             ?? null;
 
         return new self(
-            id: $data['id'],
+            id:        $data['id'],
             eventType: $data['type'],
-            data: $data['data'] ?? $data,
-            headers: $headers,
+            data:      $data['data'] ?? $data,
+            headers:   $headers,
             signature: $signature,
-            gateway: $gateway
+            gateway:   $gateway,
+            rawBody:   $rawBody  // ✅ body original preservado
         );
     }
 
@@ -106,16 +86,9 @@ class WebhookPayload
         return $this->data;
     }
 
-    /**
-     * Obtém um valor específico dos dados
-     *
-     * @param string $key Chave usando notação dot (ex: 'payment.amount')
-     * @param mixed $default Valor padrão se não encontrado
-     * @return mixed
-     */
     public function get(string $key, mixed $default = null): mixed
     {
-        $keys = explode('.', $key);
+        $keys  = explode('.', $key);
         $value = $this->data;
 
         foreach ($keys as $k) {
@@ -154,22 +127,19 @@ class WebhookPayload
     }
 
     /**
-     * Verifica se o webhook é de um tipo específico
-     *
-     * @param string $type Tipo para verificar
-     * @return bool
+     * Retorna o body HTTP bruto original.
+     * Use este método para validação de assinatura HMAC.
      */
+    public function getRawBody(): string
+    {
+        return $this->rawBody;
+    }
+
     public function isType(string $type): bool
     {
         return $this->eventType === $type;
     }
 
-    /**
-     * Verifica se o webhook corresponde a um padrão de tipo
-     *
-     * @param string $pattern Padrão com wildcard (ex: 'payment.*')
-     * @return bool
-     */
     public function matchesType(string $pattern): bool
     {
         $pattern = str_replace('.', '\.', $pattern);
@@ -178,50 +148,29 @@ class WebhookPayload
         return (bool) preg_match('/^' . $pattern . '$/', $this->eventType);
     }
 
-    /**
-     * Verifica se o payload contém uma chave específica
-     *
-     * @param string $key Chave usando notação dot
-     * @return bool
-     */
     public function has(string $key): bool
     {
         return $this->get($key) !== null;
     }
 
-    /**
-     * Converte o payload para array
-     *
-     * @return array
-     */
     public function toArray(): array
     {
         return [
-            'id' => $this->id,
-            'type' => $this->eventType,
-            'data' => $this->data,
-            'headers' => $this->headers,
+            'id'          => $this->id,
+            'type'        => $this->eventType,
+            'data'        => $this->data,
+            'headers'     => $this->headers,
             'received_at' => $this->receivedAt->format('c'),
-            'signature' => $this->signature,
-            'gateway' => $this->gateway,
+            'signature'   => $this->signature,
+            'gateway'     => $this->gateway,
         ];
     }
 
-    /**
-     * Converte o payload para JSON
-     *
-     * @return string
-     */
     public function toJson(): string
     {
         return json_encode($this->toArray(), JSON_PRETTY_PRINT);
     }
 
-    /**
-     * Retorna uma representação string do payload
-     *
-     * @return string
-     */
     public function __toString(): string
     {
         return sprintf(

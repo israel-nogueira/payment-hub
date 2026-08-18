@@ -157,7 +157,7 @@ class ItauGateway implements PaymentGatewayInterface
      */
     public function createPixPayment(PixPaymentRequest $request): PaymentResponse
     {
-        if ($request->amount < self::AMOUNT_MIN) {
+        if ($request->money->amount() < self::AMOUNT_MIN) {
             throw new GatewayException(
                 sprintf('Itaú PIX: valor mínimo é R$ %.2f', self::AMOUNT_MIN)
             );
@@ -192,7 +192,7 @@ class ItauGateway implements PaymentGatewayInterface
                 'nome'                     => $request->customerName,
             ],
             'valor' => [
-                'original' => number_format($request->amount, 2, '.', ''),
+                'original' => number_format($request->money->amount(), 2, '.', ''),
             ],
             'chave'              => $this->pixKey,
             'solicitacaoPagador' => $request->description ?? 'Pagamento via PIX',
@@ -209,7 +209,7 @@ class ItauGateway implements PaymentGatewayInterface
             success:       true,
             transactionId: (string) ($response['txid'] ?? $txid),
             status:        PaymentStatus::PENDING,
-            money:         Money::from($request->amount, Currency::BRL),
+            money:         Money::from($request->money->amount(), Currency::BRL),
             message:       'Cobrança PIX criada com sucesso.',
             rawResponse:   $response,
             metadata: [
@@ -266,6 +266,16 @@ class ItauGateway implements PaymentGatewayInterface
     }
 
     // ══════════════════════════════════════════════════════════
+    //  PAGAMENTO GENÉRICO
+    // ══════════════════════════════════════════════════════════
+
+    /** @throws GatewayException */
+    public function createPayment(array $data): PaymentResponse
+    {
+        throw new GatewayException('Itaú não possui endpoint de pagamento genérico. Use createPixPayment() ou createBoleto().');
+    }
+
+    // ══════════════════════════════════════════════════════════
     //  BOLETO
     // ══════════════════════════════════════════════════════════
 
@@ -284,8 +294,7 @@ class ItauGateway implements PaymentGatewayInterface
 
         $doc     = preg_replace('/\D/', '', (string) $request->customerDocument);
         $dueDate = $request->dueDate
-            ? $request->dueDate->format('Y-m-d')
-            : (new DateTime('+3 days'))->format('Y-m-d');
+            ?: (new DateTime('+3 days'))->format('Y-m-d');
 
         $nossoNumero = $request->metadata['nossoNumero']
             ?? (string) random_int(10_000_000_000, 99_999_999_999);
@@ -296,7 +305,7 @@ class ItauGateway implements PaymentGatewayInterface
                 'descricao_instrumento_cobranca' => 'boleto',
                 'tipo_boleto'                    => 'a vista',
                 'codigo_carteira'                => $request->metadata['carteira'] ?? '109',
-                'valor_total_titulo'             => number_format($request->amount, 2, '.', ''),
+                'valor_total_titulo'             => number_format($request->money->amount(), 2, '.', ''),
                 'codigo_especie'                 => $request->metadata['especie'] ?? 'DUPLICATA_MERCANTIL',
                 'valor_abatimento'               => '0.00',
                 'data_emissao'                   => (new DateTime())->format('Y-m-d'),
@@ -328,7 +337,7 @@ class ItauGateway implements PaymentGatewayInterface
                     [
                         'numero_nosso_numero' => $nossoNumero,
                         'data_vencimento'     => $dueDate,
-                        'valor_titulo'        => number_format($request->amount, 2, '.', ''),
+                        'valor_titulo'        => number_format($request->money->amount(), 2, '.', ''),
                         'texto_seu_numero'    => $request->metadata['seuNumero'] ?? uniqid('IT'),
                     ],
                 ],
@@ -346,7 +355,7 @@ class ItauGateway implements PaymentGatewayInterface
             success:       true,
             transactionId: $returnedNossoNumero,
             status:        PaymentStatus::PENDING,
-            money:         Money::from($request->amount, Currency::BRL),
+            money:         Money::from($request->money->amount(), Currency::BRL),
             message:       'Boleto registrado com sucesso.',
             rawResponse:   $response,
             metadata: [
@@ -447,7 +456,7 @@ class ItauGateway implements PaymentGatewayInterface
         $status = match (strtoupper((string) ($response['situacao'] ?? ''))) {
             'LIQUIDADO' => PaymentStatus::PAID,
             'BAIXADO'   => PaymentStatus::CANCELLED,
-            'VENCIDO'   => PaymentStatus::EXPIRED,
+            'VENCIDO'   => PaymentStatus::FAILED,
             default     => PaymentStatus::PENDING,
         };
 
@@ -504,7 +513,7 @@ class ItauGateway implements PaymentGatewayInterface
      */
     public function refund(RefundRequest $request): RefundResponse
     {
-        $amount = (float) ($request->amount ?? 0);
+        $amount = $request->getAmount();
 
         if ($amount < self::AMOUNT_MIN) {
             throw new GatewayException(
@@ -559,11 +568,11 @@ class ItauGateway implements PaymentGatewayInterface
      *
      * @throws GatewayException
      */
-    public function partialRefund(string $transactionId, float $amount): RefundResponse
+    public function partialRefund(string $transactionId, Money $amount): RefundResponse
     {
         return $this->refund(RefundRequest::create(
             transactionId: $transactionId,
-            amount:        $amount,
+            amount:        $amount->amount(),
             reason:        'Devolução parcial solicitada pelo recebedor',
             metadata:      ['e2eId' => $transactionId],
         ));
@@ -596,7 +605,7 @@ class ItauGateway implements PaymentGatewayInterface
     {
         $payload = [
             'data_agendamento' => $date,
-            'valor'            => number_format($request->amount, 2, '.', ''),
+            'valor'            => number_format($request->money->amount(), 2, '.', ''),
             'descricao'        => $request->description ?? 'Transferência agendada',
             'favorecido' => [
                 'nome'       => $request->recipientName,
@@ -613,7 +622,7 @@ class ItauGateway implements PaymentGatewayInterface
         return TransferResponse::create(
             success:     true,
             transferId:  (string) ($response['id_agendamento'] ?? uniqid('SCHED_ITAU_')),
-            amount:      $request->amount,
+            amount:      $request->money->amount(),
             status:      PaymentStatus::PENDING->value,
             currency:    'BRL',
             message:     'Transferência agendada para ' . $date,
@@ -782,10 +791,7 @@ class ItauGateway implements PaymentGatewayInterface
         return new CustomerResponse(
             success:     true,
             customerId:  (string) ($response['id'] ?? uniqid('ITAU_CUST_')),
-            name:        $request->name,
-            email:       $request->email ?? '',
-            document:    $doc,
-            status:      'active',
+            message:     'Cliente criado com sucesso.',
             rawResponse: $response,
         );
     }
@@ -798,10 +804,7 @@ class ItauGateway implements PaymentGatewayInterface
         return new CustomerResponse(
             success:     true,
             customerId:  $customerId,
-            name:        (string) ($response['nome']      ?? $data['nome']      ?? ''),
-            email:       (string) ($response['email']     ?? $data['email']     ?? ''),
-            document:    (string) ($response['documento'] ?? $data['documento'] ?? ''),
-            status:      'active',
+            message:     'Cliente atualizado com sucesso.',
             rawResponse: $response,
         );
     }
@@ -814,10 +817,7 @@ class ItauGateway implements PaymentGatewayInterface
         return new CustomerResponse(
             success:     true,
             customerId:  $customerId,
-            name:        (string) ($response['nome']      ?? ''),
-            email:       (string) ($response['email']     ?? ''),
-            document:    (string) ($response['documento'] ?? ''),
-            status:      (string) ($response['status']    ?? 'active'),
+            message:     'Cliente consultado com sucesso.',
             rawResponse: $response,
         );
     }
@@ -850,7 +850,7 @@ class ItauGateway implements PaymentGatewayInterface
     }
 
     /** @throws GatewayException */
-    public function capturePreAuthorization(string $transactionId, ?float $amount = null): PaymentResponse
+    public function capturePreAuthorization(string $transactionId, ?Money $amount = null): PaymentResponse
     {
         throw new GatewayException('Itaú não suporta pré-autorização de cartão.');
     }
@@ -952,13 +952,13 @@ class ItauGateway implements PaymentGatewayInterface
     }
 
     /** @throws GatewayException */
-    public function addBalance(string $walletId, float $amount): WalletResponse
+    public function addBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Itaú não suporta wallets.');
     }
 
     /** @throws GatewayException */
-    public function deductBalance(string $walletId, float $amount): WalletResponse
+    public function deductBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Itaú não suporta wallets.');
     }
@@ -970,7 +970,7 @@ class ItauGateway implements PaymentGatewayInterface
     }
 
     /** @throws GatewayException */
-    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, float $amount): TransferResponse
+    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, Money $amount): TransferResponse
     {
         throw new GatewayException('Itaú não suporta transferências entre wallets.');
     }
@@ -988,7 +988,7 @@ class ItauGateway implements PaymentGatewayInterface
     }
 
     /** @throws GatewayException */
-    public function partialReleaseEscrow(string $escrowId, float $amount): EscrowResponse
+    public function partialReleaseEscrow(string $escrowId, Money $amount): EscrowResponse
     {
         throw new GatewayException('Itaú não suporta escrow.');
     }
@@ -1053,7 +1053,7 @@ class ItauGateway implements PaymentGatewayInterface
     private function transferViaPix(TransferRequest $request): TransferResponse
     {
         $payload = [
-            'valor'     => number_format($request->amount, 2, '.', ''),
+            'valor'     => number_format($request->money->amount(), 2, '.', ''),
             'descricao' => $request->description ?? 'Transferência PIX',
         ];
 
@@ -1075,7 +1075,7 @@ class ItauGateway implements PaymentGatewayInterface
         return TransferResponse::create(
             success:     true,
             transferId:  (string) ($response['endToEndId'] ?? uniqid('PIX_ITAU_')),
-            amount:      $request->amount,
+            amount:      $request->money->amount(),
             status:      PaymentStatus::PENDING->value,
             currency:    'BRL',
             message:     'Transferência PIX iniciada.',
@@ -1091,7 +1091,7 @@ class ItauGateway implements PaymentGatewayInterface
     private function transferViaTed(TransferRequest $request): TransferResponse
     {
         $payload = [
-            'valor'      => number_format($request->amount, 2, '.', ''),
+            'valor'      => number_format($request->money->amount(), 2, '.', ''),
             'descricao'  => $request->description ?? 'Transferência TED',
             'favorecido' => [
                 'nome'       => $request->recipientName,
@@ -1108,7 +1108,7 @@ class ItauGateway implements PaymentGatewayInterface
         return TransferResponse::create(
             success:     true,
             transferId:  (string) ($response['id'] ?? uniqid('TED_ITAU_')),
-            amount:      $request->amount,
+            amount:      $request->money->amount(),
             status:      PaymentStatus::PENDING->value,
             currency:    'BRL',
             message:     'Transferência TED iniciada.',

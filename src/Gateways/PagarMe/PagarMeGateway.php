@@ -155,12 +155,12 @@ class PagarMeGateway implements PaymentGatewayInterface
     {
         $data = [
             'name' => $request->name,
-            'email' => $request->email,
+            'email' => $request->email->value(),
             'type' => 'individual',
         ];
 
-        if ($request->documentNumber) {
-            $document = preg_replace('/\D/', '', $request->documentNumber);
+        if ($request->document) {
+            $document = preg_replace('/\D/', '', $request->document->value());
             $data['document'] = $document;
             $data['document_type'] = strlen($document) === 11 ? 'cpf' : 'cnpj';
         }
@@ -227,6 +227,61 @@ class PagarMeGateway implements PaymentGatewayInterface
         return $response['data'] ?? [];
     }
 
+    // ==================== PAGAMENTO GENÉRICO ====================
+
+    public function createPayment(array $data): PaymentResponse
+    {
+        if (isset($data['pixKey']) || ($data['paymentMethod'] ?? null) === 'pix') {
+            $request = PixPaymentRequest::create(
+                amount: $data['amount'] ?? 0,
+                currency: $data['currency'] ?? 'BRL',
+                description: $data['description'] ?? null,
+                customerName: $data['customerName'] ?? null,
+                customerDocument: $data['customerDocument'] ?? null,
+                customerEmail: $data['customerEmail'] ?? null,
+                expiresInMinutes: $data['expiresInMinutes'] ?? null,
+                metadata: $data['metadata'] ?? null
+            );
+            return $this->createPixPayment($request);
+        }
+
+        if (isset($data['dueDate']) && !isset($data['cardNumber']) && !isset($data['cardToken'])) {
+            $request = BoletoPaymentRequest::create(
+                amount: $data['amount'] ?? 0,
+                currency: $data['currency'] ?? 'BRL',
+                dueDate: $data['dueDate'] ?? null,
+                description: $data['description'] ?? null,
+                customerName: $data['customerName'] ?? null,
+                customerDocument: $data['customerDocument'] ?? null,
+                customerEmail: $data['customerEmail'] ?? null,
+                customerAddress: $data['customerAddress'] ?? null
+            );
+            return $this->createBoleto($request);
+        }
+
+        if (isset($data['cardNumber']) || isset($data['cardToken'])) {
+            $request = CreditCardPaymentRequest::create(
+                amount: $data['amount'] ?? 0,
+                currency: $data['currency'] ?? 'BRL',
+                cardToken: $data['cardToken'] ?? null,
+                cardNumber: $data['cardNumber'] ?? null,
+                cardHolderName: $data['cardHolderName'] ?? null,
+                cardExpiryMonth: $data['cardExpiryMonth'] ?? null,
+                cardExpiryYear: $data['cardExpiryYear'] ?? null,
+                cardCvv: $data['cardCvv'] ?? null,
+                installments: $data['installments'] ?? 1,
+                capture: $data['capture'] ?? true,
+                customerName: $data['customerName'] ?? null,
+                customerDocument: $data['customerDocument'] ?? null,
+                customerEmail: $data['customerEmail'] ?? null,
+                billingAddress: $data['billingAddress'] ?? null
+            );
+            return $this->createCreditCardPayment($request);
+        }
+
+        throw new GatewayException('Invalid payment data: unable to determine payment method');
+    }
+
     // ==================== PIX ====================
 
     public function createPixPayment(PixPaymentRequest $request): PaymentResponse
@@ -264,13 +319,12 @@ class PagarMeGateway implements PaymentGatewayInterface
         $pixData = $charge['last_transaction']['qr_code_url'] ?? null;
         $qrCode = $charge['last_transaction']['qr_code'] ?? null;
 
-        $money = Money::from($this->parseAmount($response['amount']), Currency::BRL);
-
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: $response['id'],
-            status: $this->mapPagarMeStatus($response['status']),
-            money: $money,
+            status: $this->mapPagarMeStatus($response['status'])->value,
+            amount: $this->parseAmount($response['amount']),
+            currency: 'BRL',
             message: $response['status'],
             rawResponse: $response,
             metadata: [
@@ -352,13 +406,13 @@ class PagarMeGateway implements PaymentGatewayInterface
         $response = $this->request('POST', '/orders', $data);
 
         $charge = $response['charges'][0] ?? [];
-        $money = Money::from($this->parseAmount($response['amount']), Currency::BRL);
 
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: $response['id'],
-            status: $this->mapPagarMeStatus($response['status']),
-            money: $money,
+            status: $this->mapPagarMeStatus($response['status'])->value,
+            amount: $this->parseAmount($response['amount']),
+            currency: 'BRL',
             message: $response['status'],
             rawResponse: $response,
             metadata: [
@@ -386,23 +440,22 @@ class PagarMeGateway implements PaymentGatewayInterface
         return $response['id'];
     }
 
-    public function capturePreAuthorization(string $transactionId, ?float $amount = null): PaymentResponse
+    public function capturePreAuthorization(string $transactionId, ?Money $amount = null): PaymentResponse
     {
         $data = [];
         
         if ($amount !== null) {
-            $data['amount'] = $this->formatAmount($amount);
+            $data['amount'] = $this->formatAmount($amount->amount());
         }
 
         $response = $this->request('POST', "/orders/{$transactionId}/capture", $data);
 
-        $money = Money::from($this->parseAmount($response['amount']), Currency::BRL);
-
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: $response['id'],
-            status: $this->mapPagarMeStatus($response['status']),
-            money: $money,
+            status: $this->mapPagarMeStatus($response['status'])->value,
+            amount: $this->parseAmount($response['amount']),
+            currency: 'BRL',
             message: 'Capture successful',
             rawResponse: $response
         );
@@ -412,11 +465,12 @@ class PagarMeGateway implements PaymentGatewayInterface
     {
         $response = $this->request('DELETE', "/orders/{$transactionId}");
 
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: $transactionId,
-            status: PaymentStatus::CANCELLED,
-            money: Money::from(0, Currency::BRL),
+            status: 'cancelled',
+            amount: 0,
+            currency: 'BRL',
             message: 'Authorization cancelled',
             rawResponse: $response
         );
@@ -458,13 +512,13 @@ class PagarMeGateway implements PaymentGatewayInterface
         $response = $this->request('POST', '/orders', $data);
 
         $charge = $response['charges'][0] ?? [];
-        $money = Money::from($this->parseAmount($response['amount']), Currency::BRL);
 
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: $response['id'],
-            status: $this->mapPagarMeStatus($response['status']),
-            money: $money,
+            status: $this->mapPagarMeStatus($response['status'])->value,
+            amount: $this->parseAmount($response['amount']),
+            currency: 'BRL',
             message: $response['status'],
             rawResponse: $response,
             metadata: [
@@ -500,13 +554,13 @@ class PagarMeGateway implements PaymentGatewayInterface
         }
 
         // Billing address
-        if ($request->address) {
+        if ($request->customerAddress) {
             $data['customer']['address'] = [
-                'line_1' => $request->address['street'] ?? '',
-                'line_2' => $request->address['complement'] ?? '',
-                'zip_code' => preg_replace('/\D/', '', $request->address['zipcode'] ?? ''),
-                'city' => $request->address['city'] ?? '',
-                'state' => $request->address['state'] ?? '',
+                'line_1' => $request->customerAddress['street'] ?? '',
+                'line_2' => $request->customerAddress['complement'] ?? '',
+                'zip_code' => preg_replace('/\D/', '', $request->customerAddress['zipcode'] ?? ''),
+                'city' => $request->customerAddress['city'] ?? '',
+                'state' => $request->customerAddress['state'] ?? '',
                 'country' => 'BR',
             ];
         }
@@ -519,13 +573,13 @@ class PagarMeGateway implements PaymentGatewayInterface
 
         $charge = $response['charges'][0] ?? [];
         $boleto = $charge['last_transaction'] ?? [];
-        $money = Money::from($this->parseAmount($response['amount']), Currency::BRL);
 
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: $response['id'],
-            status: $this->mapPagarMeStatus($response['status']),
-            money: $money,
+            status: $this->mapPagarMeStatus($response['status'])->value,
+            amount: $this->parseAmount($response['amount']),
+            currency: 'BRL',
             message: $response['status'],
             rawResponse: $response,
             metadata: [
@@ -689,7 +743,7 @@ class PagarMeGateway implements PaymentGatewayInterface
         );
     }
 
-    public function partialRefund(string $transactionId, float $amount): RefundResponse
+    public function partialRefund(string $transactionId, Money $amount): RefundResponse
     {
         $response = $this->request('GET', "/orders/{$transactionId}");
         
@@ -699,7 +753,7 @@ class PagarMeGateway implements PaymentGatewayInterface
         }
 
         $refundData = [
-            'amount' => $this->formatAmount($amount),
+            'amount' => $this->formatAmount($amount->amount()),
         ];
 
         $refundResponse = $this->request('POST', "/charges/{$chargeId}/refund", $refundData);
@@ -751,20 +805,14 @@ class PagarMeGateway implements PaymentGatewayInterface
             'split' => $splits,
         ];
 
-        // Adicionar dados do método de pagamento
-        if ($request->cardToken) {
-            $data['card_id'] = $request->cardToken;
-        }
-
         $response = $this->request('POST', '/orders', $data);
 
-        $money = Money::from($this->parseAmount($response['amount']), Currency::BRL);
-
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: $response['id'],
-            status: $this->mapPagarMeStatus($response['status']),
-            money: $money,
+            status: $this->mapPagarMeStatus($response['status'])->value,
+            amount: $this->parseAmount($response['amount']),
+            currency: 'BRL',
             message: 'Split payment created',
             rawResponse: $response
         );
@@ -851,12 +899,12 @@ class PagarMeGateway implements PaymentGatewayInterface
         throw new GatewayException('Wallets not available - use Recipients for split payments');
     }
 
-    public function addBalance(string $walletId, float $amount): WalletResponse
+    public function addBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Wallet operations not available');
     }
 
-    public function deductBalance(string $walletId, float $amount): WalletResponse
+    public function deductBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Wallet operations not available');
     }
@@ -866,7 +914,7 @@ class PagarMeGateway implements PaymentGatewayInterface
         throw new GatewayException('Wallet balance not available');
     }
 
-    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, float $amount): TransferResponse
+    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, Money $amount): TransferResponse
     {
         throw new GatewayException('Wallet transfers not available');
     }
@@ -883,7 +931,7 @@ class PagarMeGateway implements PaymentGatewayInterface
         throw new GatewayException('Use capturePreAuthorization to release funds');
     }
 
-    public function partialReleaseEscrow(string $escrowId, float $amount): EscrowResponse
+    public function partialReleaseEscrow(string $escrowId, Money $amount): EscrowResponse
     {
         throw new GatewayException('Use capturePreAuthorization with amount parameter');
     }
@@ -898,7 +946,7 @@ class PagarMeGateway implements PaymentGatewayInterface
     public function transfer(TransferRequest $request): TransferResponse
     {
         $data = [
-            'amount' => $this->formatAmount($request->amount),
+            'amount' => $this->formatAmount($request->money->amount()),
             'recipient_id' => $request->recipientId,
         ];
 

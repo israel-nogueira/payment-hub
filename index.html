@@ -1,0 +1,1784 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Hub — Pagamentos PHP sem dor de cabeça</title>
+    <meta name="description"
+        content="Uma interface, múltiplos gateways. Integre PIX, cartão, boleto e 15+ gateways mudando apenas 1 linha de código.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #080f0a;
+            --surface: #0d1a10;
+            --panel: #111f14;
+            --border: #1e3323;
+            --green: #22c55e;
+            --green-dim: #16a34a;
+            --green-glow: #22c55e33;
+            --green-soft: #bbf7d0;
+            --text: #e2f5e8;
+            --muted: #7aab87;
+            --faint: #3d6647;
+            --mono: 'JetBrains Mono', monospace;
+            --sans: 'Inter', sans-serif;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            font-size: 16px;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* NAV */
+        nav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            height: 60px;
+            background: #080f0add;
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-logo {
+            font-family: var(--mono);
+            font-size: .95rem;
+            font-weight: 600;
+            color: var(--green);
+            letter-spacing: -.01em;
+            text-decoration: none;
+        }
+
+        .nav-logo span {
+            color: var(--muted);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.75rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: .875rem;
+            font-weight: 500;
+            transition: color .15s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text);
+        }
+
+        .nav-cta {
+            padding: .4rem 1rem;
+            border-radius: 6px;
+            background: var(--green);
+            color: #041006 !important;
+            font-weight: 600 !important;
+            font-size: .8rem !important;
+        }
+
+        .nav-cta:hover {
+            opacity: .85;
+            color: #041006 !important;
+        }
+
+        /* HERO */
+        .hero {
+            position: relative;
+            min-height: 92vh;
+            display: flex;
+            align-items: center;
+            padding: 5rem 2rem 4rem;
+            overflow: hidden;
+        }
+
+        .hero-bg {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                radial-gradient(ellipse 70% 60% at 60% 40%, #22c55e12 0%, transparent 70%),
+                radial-gradient(ellipse 40% 40% at 10% 80%, #16a34a08 0%, transparent 60%);
+        }
+
+        .hero-grid {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            opacity: .045;
+            background-image: linear-gradient(var(--green) 1px, transparent 1px), linear-gradient(90deg, var(--green) 1px, transparent 1px);
+            background-size: 48px 48px;
+            mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 0%, transparent 100%);
+        }
+
+        .hero-inner {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .25rem .75rem;
+            border-radius: 100px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            font-family: var(--mono);
+            font-size: .72rem;
+            color: var(--green);
+            margin-bottom: 1.5rem;
+            letter-spacing: .04em;
+        }
+
+        .badge-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 6px var(--green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: .4
+            }
+        }
+
+        .hero h1 {
+            font-size: clamp(2.4rem, 5vw, 3.8rem);
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: -.03em;
+            margin-bottom: 1.25rem;
+        }
+
+        .hero h1 em {
+            font-style: normal;
+            color: var(--green);
+            text-shadow: 0 0 40px var(--green-glow);
+        }
+
+        .hero-sub {
+            font-size: 1.05rem;
+            color: var(--muted);
+            max-width: 480px;
+            margin-bottom: 2rem;
+            line-height: 1.7;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: .75rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            padding: .7rem 1.5rem;
+            border-radius: 8px;
+            background: var(--green);
+            color: #041006;
+            font-weight: 700;
+            font-size: .9rem;
+            text-decoration: none;
+            transition: all .15s;
+            box-shadow: 0 0 20px var(--green-glow);
+        }
+
+        .btn-primary:hover {
+            opacity: .88;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            padding: .7rem 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            font-weight: 500;
+            font-size: .9rem;
+            text-decoration: none;
+            transition: all .15s;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 2.5rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .stat-num {
+            font-family: var(--mono);
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--green);
+        }
+
+        .stat-label {
+            font-size: .75rem;
+            color: var(--faint);
+            margin-top: .1rem;
+        }
+
+        /* CODE PANEL */
+        .hero-code {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 32px 64px #00000066, 0 0 0 1px var(--border);
+        }
+
+        .code-bar {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            padding: .65rem 1rem;
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .code-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .code-dot.r {
+            background: #ff5f57;
+        }
+
+        .code-dot.y {
+            background: #ffbd2e;
+        }
+
+        .code-dot.g {
+            background: #28ca41;
+        }
+
+        .code-fname {
+            margin-left: .5rem;
+            font-family: var(--mono);
+            font-size: .72rem;
+            color: var(--faint);
+        }
+
+        pre {
+            padding: 1.5rem;
+            font-family: var(--mono);
+            font-size: .8rem;
+            line-height: 1.7;
+            overflow-x: auto;
+        }
+
+        .c-comment {
+            color: #4a7a54;
+        }
+
+        .c-kw {
+            color: #86efac;
+        }
+
+        .c-fn {
+            color: #4ade80;
+        }
+
+        .c-str {
+            color: #fde68a;
+        }
+
+        .c-var {
+            color: #93c5fd;
+        }
+
+        .c-cls {
+            color: #c084fc;
+        }
+
+        .c-num {
+            color: #fb923c;
+        }
+
+        /* SECTIONS */
+        .section {
+            padding: 5rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-label {
+            font-family: var(--mono);
+            font-size: .72rem;
+            color: var(--green);
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            margin-bottom: .75rem;
+        }
+
+        .section-title {
+            font-size: clamp(1.8rem, 3vw, 2.6rem);
+            font-weight: 700;
+            letter-spacing: -.02em;
+            line-height: 1.2;
+            margin-bottom: .75rem;
+        }
+
+        .section-title em {
+            font-style: normal;
+            color: var(--green);
+        }
+
+        .section-sub {
+            color: var(--muted);
+            max-width: 540px;
+            font-size: .95rem;
+            line-height: 1.7;
+        }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border), transparent);
+            margin: 0 2rem;
+        }
+
+        .surface-section {
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 5rem 2rem;
+        }
+
+        .surface-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* GATEWAYS */
+        .gateways-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: .75rem;
+            margin-top: 2.5rem;
+        }
+
+        .gw-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: .9rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+            font-size: .82rem;
+            font-weight: 500;
+            transition: border-color .15s, background .15s;
+        }
+
+        .gw-card:hover {
+            border-color: var(--green-dim);
+            background: var(--panel);
+        }
+
+        .gw-badge {
+            margin-left: auto;
+            font-size: .6rem;
+            padding: .1rem .35rem;
+            border-radius: 4px;
+            background: #22c55e1a;
+            color: var(--green);
+            font-family: var(--mono);
+        }
+
+        /* FEATURES */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1px;
+            margin-top: 3rem;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .feat-card {
+            background: var(--surface);
+            padding: 1.75rem;
+            transition: background .15s;
+        }
+
+        .feat-card:hover {
+            background: var(--panel);
+        }
+
+        .feat-icon {
+            font-size: 1.4rem;
+            margin-bottom: .75rem;
+        }
+
+        .feat-title {
+            font-size: .95rem;
+            font-weight: 600;
+            margin-bottom: .4rem;
+        }
+
+        .feat-desc {
+            font-size: .83rem;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        /* COMPARE */
+        .compare-wrap {
+            margin-top: 2.5rem;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .83rem;
+        }
+
+        thead tr {
+            background: var(--panel);
+        }
+
+        th {
+            padding: .9rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: .78rem;
+            color: var(--muted);
+            letter-spacing: .04em;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th.hl {
+            color: var(--green);
+        }
+
+        td {
+            padding: .8rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--muted);
+        }
+
+        td.hl {
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tbody tr:hover td {
+            background: var(--panel);
+        }
+
+        .yes {
+            color: var(--green);
+        }
+
+        .no {
+            color: var(--faint);
+        }
+
+        .partial {
+            color: #fbbf24;
+        }
+
+        /* INSTALL STEPS */
+        .install-steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-top: 3rem;
+        }
+
+        .step-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .step-head {
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            padding: .75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            background: var(--panel);
+        }
+
+        .step-num {
+            font-family: var(--mono);
+            font-size: .7rem;
+            color: var(--green);
+            font-weight: 600;
+        }
+
+        .step-title {
+            font-size: .82rem;
+            font-weight: 600;
+        }
+
+        .step-card pre {
+            font-size: .75rem;
+            padding: 1rem 1.25rem;
+        }
+
+        /* ── DOCS ───────────────────────────────────────── */
+        .docs-layout {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 5rem 2rem;
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 3rem;
+            align-items: start;
+        }
+
+        .docs-sidebar {
+            position: sticky;
+            top: 80px;
+        }
+
+        .sidebar-title {
+            font-family: var(--mono);
+            font-size: .65rem;
+            color: var(--faint);
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            margin-bottom: .75rem;
+            padding-bottom: .5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .sidebar-group-label {
+            font-size: .7rem;
+            font-weight: 600;
+            color: var(--muted);
+            margin-bottom: .35rem;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+        }
+
+        .sidebar-link {
+            display: block;
+            font-size: .8rem;
+            color: var(--faint);
+            text-decoration: none;
+            padding: .2rem 0;
+            transition: color .12s;
+        }
+
+        .sidebar-link:hover {
+            color: var(--green);
+        }
+
+        .sidebar-link.active {
+            color: var(--green);
+        }
+
+        .docs-content {}
+
+        .docs-section {
+            margin-bottom: 4rem;
+            scroll-margin-top: 80px;
+        }
+
+        .docs-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .docs-h2 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: -.02em;
+            margin-bottom: 1.25rem;
+            padding-bottom: .75rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+        }
+
+        .docs-h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 1.75rem 0 .75rem;
+            color: var(--green-soft);
+        }
+
+        .docs-p {
+            font-size: .88rem;
+            color: var(--muted);
+            line-height: 1.7;
+            margin-bottom: .75rem;
+        }
+
+        .docs-code {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 1.25rem;
+        }
+
+        .docs-code-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: .5rem 1rem;
+            background: var(--panel);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .docs-code-label {
+            font-family: var(--mono);
+            font-size: .68rem;
+            color: var(--faint);
+        }
+
+        .docs-copy {
+            font-family: var(--mono);
+            font-size: .65rem;
+            color: var(--faint);
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: .15rem .4rem;
+            cursor: pointer;
+            transition: all .15s;
+        }
+
+        .docs-copy:hover {
+            color: var(--green);
+            border-color: var(--green);
+        }
+
+        .docs-code pre {
+            padding: 1.1rem 1.25rem;
+            font-size: .78rem;
+        }
+
+        .docs-table-wrap {
+            overflow-x: auto;
+            margin-bottom: 1.25rem;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .docs-table-wrap table {
+            font-size: .8rem;
+        }
+
+        .docs-table-wrap th {
+            font-size: .72rem;
+        }
+
+        .tip-box {
+            background: #22c55e0a;
+            border: 1px solid #22c55e22;
+            border-radius: 8px;
+            padding: .85rem 1rem;
+            margin-bottom: 1.25rem;
+            font-size: .82rem;
+            color: var(--muted);
+            display: flex;
+            gap: .5rem;
+            align-items: flex-start;
+            line-height: 1.6;
+        }
+
+        .warn-box {
+            background: #f59e0b0a;
+            border: 1px solid #f59e0b22;
+            border-radius: 8px;
+            padding: .85rem 1rem;
+            margin-bottom: 1.25rem;
+            font-size: .82rem;
+            color: #d97706;
+            display: flex;
+            gap: .5rem;
+            align-items: flex-start;
+            line-height: 1.6;
+        }
+
+        /* CTA */
+        .cta-section {
+            padding: 7rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-bg {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: radial-gradient(ellipse 60% 80% at 50% 50%, #22c55e0d 0%, transparent 70%);
+        }
+
+        .cta-section h2 {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 700;
+            letter-spacing: -.03em;
+            margin-bottom: .75rem;
+        }
+
+        .cta-section h2 em {
+            font-style: normal;
+            color: var(--green);
+        }
+
+        .cta-section p {
+            color: var(--muted);
+            margin-bottom: 2rem;
+            font-size: .95rem;
+        }
+
+        .cta-actions {
+            display: flex;
+            gap: .75rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* FOOTER */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: .78rem;
+            color: var(--faint);
+        }
+
+        footer a {
+            color: var(--faint);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            color: var(--muted);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        /* FAKEBANK section */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .5rem;
+            margin: 1.5rem 0;
+        }
+
+        .pill {
+            padding: .3rem .75rem;
+            border-radius: 100px;
+            border: 1px solid var(--border);
+            font-size: .78rem;
+            color: var(--muted);
+            background: var(--panel);
+            display: flex;
+            align-items: center;
+            gap: .35rem;
+        }
+
+        .pill-check {
+            color: var(--green);
+            font-size: .7rem;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 900px) {
+            .hero-inner {
+                grid-template-columns: 1fr;
+                gap: 2.5rem;
+            }
+
+            .hero-code {
+                display: none;
+            }
+
+            .two-col {
+                grid-template-columns: 1fr;
+                gap: 2.5rem;
+            }
+
+            .install-steps {
+                grid-template-columns: 1fr;
+            }
+
+            .docs-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .docs-sidebar {
+                display: none;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .hero-stats {
+                flex-wrap: wrap;
+                gap: 1rem;
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--faint);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- NAV -->
+    <nav>
+        <a href="#" class="nav-logo">payment<span>-hub</span></a>
+        <ul class="nav-links">
+            <li><a href="#gateways">Gateways</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#docs">Docs</a></li>
+            <li><a href="#install">Instalação</a></li>
+            <li><a href="https://github.com/israel-nogueira/payment-hub" target="_blank">GitHub</a></li>
+            <li><a href="#install" class="nav-cta">composer install →</a></li>
+        </ul>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-bg"></div>
+        <div class="hero-grid"></div>
+        <div class="hero-inner">
+            <div>
+                <div class="hero-badge"><span class="badge-dot"></span>PHP 8.3 · Type-safe · MIT License</div>
+                <h1>Pagamentos PHP<br><em>sem dor de cabeça</em></h1>
+                <p class="hero-sub">
+                    Uma interface, 15+ gateways. Integre PIX, cartão, boleto e muito mais
+                    — troque de gateway mudando apenas <strong>1 linha de código</strong>.
+                </p>
+                <div class="hero-actions">
+                    <a href="#install" class="btn-primary">↓ Instalar agora</a>
+                    <a href="#docs" class="btn-secondary">📄 Ver Docs</a>
+                    <a href="https://github.com/israel-nogueira/payment-hub" class="btn-secondary" target="_blank">⭐
+                        GitHub</a>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat">
+                        <div class="stat-num">15+</div>
+                        <div class="stat-label">gateways prontos</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-num">1</div>
+                        <div class="stat-label">linha para trocar</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-num">0</div>
+                        <div class="stat-label">setup sem API</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-num">100%</div>
+                        <div class="stat-label">type-safe</div>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-code">
+                <div class="code-bar"><span class="code-dot r"></span><span class="code-dot y"></span><span
+                        class="code-dot g"></span><span class="code-fname">payment.php</span></div>
+                <pre><span class="c-comment">// ① Comece SEM precisar de API real</span>
+<span class="c-var">$hub</span> = <span class="c-kw">new</span> <span class="c-cls">PaymentHub</span>(<span class="c-kw">new</span> <span class="c-cls">FakeBankGateway</span>());
+
+<span class="c-comment">// ② Crie o pagamento</span>
+<span class="c-var">$pix</span> = <span class="c-var">$hub</span>-><span class="c-fn">createPixPayment</span>(
+    <span class="c-cls">PixPaymentRequest</span>::<span class="c-fn">create</span>(
+        amount: <span class="c-num">149.90</span>,
+        customerEmail: <span class="c-str">'cliente@email.com'</span>,
+        description: <span class="c-str">'Pedido #1234'</span>
+    )
+);
+
+<span class="c-comment">// ③ Troque para produção — só isso</span>
+<span class="c-var">$hub</span> = <span class="c-kw">new</span> <span class="c-cls">PaymentHub</span>(<span class="c-kw">new</span> <span class="c-cls">AsaasGateway</span>(<span class="c-var">$config</span>));
+<span class="c-comment">// ↑ Todo o resto continua igual ✓</span></pre>
+            </div>
+        </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- GATEWAYS -->
+    <div class="section" id="gateways">
+        <div class="section-label">// gateways suportados</div>
+        <h2 class="section-title">15+ gateways <em>prontos para usar</em></h2>
+        <p class="section-sub">Brasileiros e internacionais. PIX, boleto, cartão, assinaturas, split — cada gateway com
+            documentação própria.</p>
+        <div class="gateways-grid">
+            <div class="gw-card"><span>🧪</span> FakeBank <span class="gw-badge">dev</span></div>
+            <div class="gw-card"><span>🟣</span> Asaas <span class="gw-badge">✓</span></div>
+            <div class="gw-card"><span>🟡</span> Pagar.me <span class="gw-badge">✓</span></div>
+            <div class="gw-card"><span>🟣</span> C6 Bank <span class="gw-badge">✓</span></div>
+            <div class="gw-card"><span>💚</span> MercadoPago <span class="gw-badge">✓</span></div>
+            <div class="gw-card"><span>🟠</span> PagSeguro <span class="gw-badge">✓</span></div>
+            <div class="gw-card"><span>🔴</span> Adyen <span class="gw-badge">✓</span></div>
+            <div class="gw-card"><span>🔵</span> Stripe <span class="gw-badge">✓</span></div>
+            <div class="gw-card"><span>💙</span> PayPal <span class="gw-badge">✓</span></div>
+            <div class="gw-card"><span>🌎</span> EBANX <span class="gw-badge">7 países</span></div>
+            <div class="gw-card"><span>🏦</span> Banco do Brasil <span class="gw-badge">✓</span></div>
+            <div class="gw-card"><span>🏦</span> Itaú <span class="gw-badge">✓</span></div>
+            <div class="gw-card"><span>🟣</span> NuBank <span class="gw-badge">✓</span></div>
+            <div class="gw-card"><span>🏦</span> BofA CashPro <span class="gw-badge">✓</span></div>
+            <div class="gw-card"><span>🟢</span> EtherGlobal <span class="gw-badge">PIX</span></div>
+        </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- FAKEBANK -->
+    <section class="surface-section">
+        <div class="surface-inner">
+            <div class="two-col">
+                <div>
+                    <div class="section-label">// desenvolvimento sem API</div>
+                    <h2 class="section-title"><em>FakeBankGateway</em><br>Desenvolva offline</h2>
+                    <p style="color:var(--muted);font-size:.95rem;line-height:1.7;margin:1rem 0">
+                        Incluso na biblioteca. Simula <strong style="color:var(--text)">todos os gateways</strong> sem
+                        internet,
+                        sem credenciais, sem sandbox. Desenvolva toda sua lógica localmente
+                        e conecte na API real só quando estiver pronto.
+                    </p>
+                    <div class="pills">
+                        <div class="pill"><span class="pill-check">✓</span> Offline</div>
+                        <div class="pill"><span class="pill-check">✓</span> Sem API keys</div>
+                        <div class="pill"><span class="pill-check">✓</span> Persistência JSON</div>
+                        <div class="pill"><span class="pill-check">✓</span> PIX, Cartão, Boleto</div>
+                        <div class="pill"><span class="pill-check">✓</span> Split & Escrow</div>
+                        <div class="pill"><span class="pill-check">✓</span> Assinaturas</div>
+                        <div class="pill"><span class="pill-check">✓</span> Sub-contas & Wallets</div>
+                        <div class="pill"><span class="pill-check">✓</span> Testes automatizados</div>
+                    </div>
+                </div>
+                <div class="hero-code" style="margin:0">
+                    <div class="code-bar"><span class="code-dot r"></span><span class="code-dot y"></span><span
+                            class="code-dot g"></span><span class="code-fname">dev → produção</span></div>
+                    <pre><span class="c-comment">// DESENVOLVIMENTO (offline, sem credenciais)</span>
+<span class="c-var">$hub</span> = <span class="c-kw">new</span> <span class="c-cls">PaymentHub</span>(<span class="c-kw">new</span> <span class="c-cls">FakeBankGateway</span>());
+
+<span class="c-comment">// PRODUÇÃO — mesma interface, só troca o gateway</span>
+<span class="c-var">$hub</span> = <span class="c-kw">new</span> <span class="c-cls">PaymentHub</span>(<span class="c-kw">new</span> <span class="c-cls">PagarMeGateway</span>([
+    <span class="c-str">'api_key'</span> => <span class="c-var">$_ENV</span>[<span class="c-str">'PAGARME_KEY'</span>],
+]));
+
+<span class="c-comment">// O resto do código? Não muda nada. ✓</span>
+<span class="c-var">$pix</span> = <span class="c-var">$hub</span>-><span class="c-fn">createPixPayment</span>(<span class="c-var">$request</span>);
+<span class="c-var">$sub</span> = <span class="c-var">$hub</span>-><span class="c-fn">createSubscription</span>(<span class="c-var">$request</span>);
+<span class="c-var">$spl</span> = <span class="c-var">$hub</span>-><span class="c-fn">createSplitPayment</span>(<span class="c-var">$request</span>);</pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FEATURES -->
+    <div class="section" id="features">
+        <div class="section-label">// funcionalidades</div>
+        <h2 class="section-title">Tudo que você precisa,<br><em>nada que você não precisa</em></h2>
+        <p class="section-sub">ValueObjects validados, events, webhooks, antifraude — estrutura sólida sem abstrações
+            desnecessárias.</p>
+        <div class="features-grid">
+            <div class="feat-card">
+                <div class="feat-icon">💰</div>
+                <div class="feat-title">ValueObjects Type-safe</div>
+                <div class="feat-desc">Money, CPF, CNPJ, Email e CardNumber com validação automática. Zero string mágica
+                    perdida no código.</div>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon">🔄</div>
+                <div class="feat-title">Split de Pagamento</div>
+                <div class="feat-desc">Divida recebimentos entre múltiplos destinatários com regras customizáveis.
+                    Marketplace nativo.</div>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon">🔁</div>
+                <div class="feat-title">Assinaturas & Recorrência</div>
+                <div class="feat-desc">Criar, cancelar, suspender e reativar. Cobranças automáticas nos intervalos que
+                    você definir.</div>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon">🔒</div>
+                <div class="feat-title">Escrow (Custódia)</div>
+                <div class="feat-desc">Retenha fundos, libere parcial ou totalmente conforme regras de negócio.
+                    Cancelamento sem custo.</div>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon">👛</div>
+                <div class="feat-title">Wallets & Sub-contas</div>
+                <div class="feat-desc">Carteiras digitais, saldo, transferências entre wallets e gestão completa de
+                    sub-contas.</div>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon">🛡️</div>
+                <div class="feat-title">Antifraude & Webhooks</div>
+                <div class="feat-desc">Blacklist/whitelist, análise de risco, e webhooks padronizados com processor por
+                    gateway.</div>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon">⚡</div>
+                <div class="feat-title">Events System</div>
+                <div class="feat-desc">PaymentCreated, PaymentCompleted, PaymentFailed, PaymentRefunded — hooks para
+                    cada etapa.</div>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon">🌎</div>
+                <div class="feat-title">Multi-país</div>
+                <div class="feat-desc">EBANX cobre 7 países da América Latina. BofA CashPro para operações nos EUA via
+                    Zelle/ACH/Wire.</div>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon">🎯</div>
+                <div class="feat-title">Pre-auth & Capture</div>
+                <div class="feat-desc">Reserve o valor, capture depois. Suportado nos principais gateways de cartão.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- COMPARE -->
+    <div class="section">
+        <div class="section-label">// por que payment hub?</div>
+        <h2 class="section-title">Integração direta vs <em>Payment Hub</em></h2>
+        <div class="compare-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Característica</th>
+                        <th class="hl">Payment Hub</th>
+                        <th>Integração direta</th>
+                        <th>Outra lib</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Trocar gateway</td>
+                        <td class="hl yes">1 linha de código</td>
+                        <td class="no">Reescrever tudo</td>
+                        <td class="partial">Parcial</td>
+                    </tr>
+                    <tr>
+                        <td>Testar sem API</td>
+                        <td class="hl yes">✓ FakeBankGateway</td>
+                        <td class="no">✕</td>
+                        <td class="no">✕</td>
+                    </tr>
+                    <tr>
+                        <td>PHP 8.3 + Type hints</td>
+                        <td class="hl yes">✓ 100%</td>
+                        <td class="partial">Depende</td>
+                        <td class="partial">Parcial</td>
+                    </tr>
+                    <tr>
+                        <td>ValueObjects validados</td>
+                        <td class="hl yes">✓ CPF, Money, Card…</td>
+                        <td class="no">✕</td>
+                        <td class="no">✕</td>
+                    </tr>
+                    <tr>
+                        <td>Split nativo</td>
+                        <td class="hl yes">✓</td>
+                        <td class="partial">Por gateway</td>
+                        <td class="no">✕</td>
+                    </tr>
+                    <tr>
+                        <td>PIX + Boleto + Cartão</td>
+                        <td class="hl yes">✓ Interface única</td>
+                        <td class="no">APIs diferentes</td>
+                        <td class="partial">Parcial</td>
+                    </tr>
+                    <tr>
+                        <td>Gateways bancários (BB, Itaú)</td>
+                        <td class="hl yes">✓</td>
+                        <td class="no">Muito complexo</td>
+                        <td class="no">✕</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- DOCS -->
+    <section class="surface-section" id="docs">
+        <div class="docs-layout">
+
+            <!-- SIDEBAR -->
+            <aside class="docs-sidebar">
+                <div class="sidebar-title">// documentação</div>
+                <div class="sidebar-group">
+                    <div class="sidebar-group-label">Início</div>
+                    <a class="sidebar-link" href="#doc-config">Configuração</a>
+                    <a class="sidebar-link" href="#doc-storage">Persistência</a>
+                </div>
+                <div class="sidebar-group">
+                    <div class="sidebar-group-label">Pagamentos</div>
+                    <a class="sidebar-link" href="#doc-pix">PIX</a>
+                    <a class="sidebar-link" href="#doc-credit">Cartão de Crédito</a>
+                    <a class="sidebar-link" href="#doc-debit">Cartão de Débito</a>
+                    <a class="sidebar-link" href="#doc-boleto">Boleto</a>
+                    <a class="sidebar-link" href="#doc-split">Split</a>
+                    <a class="sidebar-link" href="#doc-link">Link de Pagamento</a>
+                </div>
+                <div class="sidebar-group">
+                    <div class="sidebar-group-label">Gestão</div>
+                    <a class="sidebar-link" href="#doc-customers">Clientes</a>
+                    <a class="sidebar-link" href="#doc-subscriptions">Assinaturas</a>
+                    <a class="sidebar-link" href="#doc-transactions">Transações</a>
+                    <a class="sidebar-link" href="#doc-refunds">Estornos</a>
+                </div>
+                <div class="sidebar-group">
+                    <div class="sidebar-group-label">Financeiro</div>
+                    <a class="sidebar-link" href="#doc-wallets">Wallets</a>
+                    <a class="sidebar-link" href="#doc-subaccounts">Sub-contas</a>
+                    <a class="sidebar-link" href="#doc-escrow">Escrow</a>
+                    <a class="sidebar-link" href="#doc-transfers">Transferências</a>
+                    <a class="sidebar-link" href="#doc-balance">Saldo</a>
+                </div>
+                <div class="sidebar-group">
+                    <div class="sidebar-group-label">Avançado</div>
+                    <a class="sidebar-link" href="#doc-fraud">Antifraude</a>
+                    <a class="sidebar-link" href="#doc-webhooks">Webhooks</a>
+                    <a class="sidebar-link" href="#doc-cards-table">Cartões de teste</a>
+                </div>
+            </aside>
+
+            <!-- CONTENT -->
+            <div class="docs-content">
+
+                <div class="docs-section" id="doc-config">
+                    <h2 class="docs-h2">⚙️ Configuração</h2>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">configuração básica</span></div>
+                        <pre><span class="c-kw">use</span> <span class="c-cls">IsraelNogueira\PaymentHub\PaymentHub</span>;
+<span class="c-kw">use</span> <span class="c-cls">IsraelNogueira\PaymentHub\Gateways\FakeBank\FakeBankGateway</span>;
+
+<span class="c-comment">// Sem persistência (memória)</span>
+<span class="c-var">$gateway</span> = <span class="c-kw">new</span> <span class="c-cls">FakeBankGateway</span>();
+<span class="c-var">$hub</span>     = <span class="c-kw">new</span> <span class="c-cls">PaymentHub</span>(<span class="c-var">$gateway</span>);
+
+<span class="c-comment">// Com caminho customizado de storage</span>
+<span class="c-var">$gateway</span> = <span class="c-kw">new</span> <span class="c-cls">FakeBankGateway</span>(storagePath: <span class="c-str">'/tmp/meus-testes'</span>);</pre>
+                    </div>
+                    <div class="tip-box">💡 Use o <code>FakeBankGateway</code> durante o desenvolvimento e troque apenas
+                        o gateway ao ir para produção — toda a lógica de negócio permanece igual.</div>
+                </div>
+                <div class="docs-section" id="doc-storage">
+                    <h2 class="docs-h2">💾 Persistência de Dados</h2>
+                    <p class="docs-p">O FakeBankGateway persiste tudo em arquivos JSON locais. Estrutura gerada
+                        automaticamente:</p>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">estrutura de diretórios</span></div>
+                        <pre><span class="c-comment">/storage/fakebank/</span>
+├── transactions.json
+├── customers.json
+├── tokens.json
+├── wallets.json
+├── subscriptions.json
+├── sub_accounts.json
+├── escrows.json
+├── payment_links.json
+├── refunds.json
+└── transfers.json</pre>
+                    </div>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">acesso direto ao storage</span></div>
+                        <pre><span class="c-var">$storage</span> = <span class="c-var">$gateway</span>-><span class="c-fn">getStorage</span>();
+
+<span class="c-var">$tx</span>       = <span class="c-var">$storage</span>-><span class="c-fn">get</span>(<span class="c-str">'transactions'</span>, <span class="c-str">'FAKE_PIX_abc'</span>);
+<span class="c-var">$all</span>      = <span class="c-var">$storage</span>-><span class="c-fn">getAll</span>(<span class="c-str">'customers'</span>);
+<span class="c-var">$approved</span> = <span class="c-var">$storage</span>-><span class="c-fn">find</span>(<span class="c-str">'transactions'</span>, [<span class="c-str">'status'</span> => <span class="c-str">'approved'</span>]);
+
+<span class="c-var">$storage</span>-><span class="c-fn">clear</span>(<span class="c-str">'transactions'</span>); <span class="c-comment">// limpa um tipo</span>
+<span class="c-var">$storage</span>-><span class="c-fn">clearAll</span>();             <span class="c-comment">// limpa tudo</span></pre>
+                    </div>
+                    <p class="docs-p">Em gateways reais (ex: <code>EtherGlobalAssetsGateway</code>) não existe storage
+                        local — os dados vêm direto do <code>rawResponse</code> de cada chamada.</p>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">rawResponse — PIX</span></div>
+                        <pre><span class="c-var">$response</span> = <span class="c-var">$hub</span>-><span class="c-fn">createPixPayment</span>(<span class="c-var">$pixRequest</span>);
+
+<span class="c-var">$qrCodeId</span> = <span class="c-var">$response</span>->rawResponse[<span class="c-str">'qrCodeId'</span>] <span class="c-kw">??</span> <span class="c-kw">null</span>;
+<span class="c-var">$pixKey</span>   = <span class="c-var">$response</span>->rawResponse[<span class="c-str">'pixKey'</span>]   <span class="c-kw">??</span> <span class="c-kw">null</span>; <span class="c-comment">// copia e cola</span>
+<span class="c-var">$expireAt</span> = <span class="c-var">$response</span>->rawResponse[<span class="c-str">'expireAt'</span>] <span class="c-kw">??</span> <span class="c-kw">null</span>;</pre>
+                    </div>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">rawResponse — saldo e
+                                transferência</span></div>
+                        <pre><span class="c-var">$balance</span> = <span class="c-var">$hub</span>-><span class="c-fn">getBalance</span>();
+<span class="c-kw">echo</span> <span class="c-var">$balance</span>->balance;          <span class="c-comment">// saldo total</span>
+<span class="c-kw">echo</span> <span class="c-var">$balance</span>->availableBalance; <span class="c-comment">// disponível</span>
+<span class="c-kw">echo</span> <span class="c-var">$balance</span>->pendingBalance;   <span class="c-comment">// pendente</span>
+
+<span class="c-var">$transfer</span> = <span class="c-var">$hub</span>-><span class="c-fn">transfer</span>(<span class="c-var">$transferRequest</span>);
+
+<span class="c-var">$pixId</span>      = <span class="c-var">$transfer</span>->rawResponse[<span class="c-str">'pixId'</span>]      <span class="c-kw">??</span> <span class="c-kw">null</span>;
+<span class="c-var">$e2e</span>        = <span class="c-var">$transfer</span>->rawResponse[<span class="c-str">'e2e'</span>]        <span class="c-kw">??</span> <span class="c-kw">null</span>; <span class="c-comment">// ID end-to-end do Bacen</span>
+<span class="c-var">$executedAt</span> = <span class="c-var">$transfer</span>->rawResponse[<span class="c-str">'executedAt'</span>] <span class="c-kw">??</span> <span class="c-kw">null</span>;</pre>
+                    </div>
+                    <div class="tip-box">💡 <code>rawResponse</code> varia por gateway — sempre use <code>??</code> pra
+                        acessar campos que não são padronizados na interface comum.</div>
+                </div>
+                <div class="docs-section" id="doc-pix">
+                    <h2 class="docs-h2">💳 PIX</h2>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">criar pagamento PIX</span></div>
+                        <pre><span class="c-kw">use</span> <span class="c-cls">IsraelNogueira\PaymentHub\DataObjects\Requests\PixPaymentRequest</span>;
+
+<span class="c-var">$request</span> = <span class="c-cls">PixPaymentRequest</span>::<span class="c-fn">create</span>(
+    amount:           <span class="c-num">100.00</span>,
+    customerName:     <span class="c-str">'João Silva'</span>,
+    customerEmail:    <span class="c-str">'joao@teste.com'</span>,
+    customerDocument: <span class="c-str">'12345678900'</span>,
+    description:      <span class="c-str">'Pedido #1234'</span>
+);
+
+<span class="c-var">$response</span> = <span class="c-var">$hub</span>-><span class="c-fn">createPixPayment</span>(<span class="c-var">$request</span>);
+
+<span class="c-kw">echo</span> <span class="c-var">$response</span>->transactionId; <span class="c-comment">// FAKE_PIX_xyz789</span>
+<span class="c-kw">echo</span> <span class="c-var">$response</span>->status->value; <span class="c-comment">// 'approved'</span>
+
+<span class="c-comment">// QR Code e Copia e Cola</span>
+<span class="c-var">$qr</span>  = <span class="c-var">$hub</span>-><span class="c-fn">getPixQrCode</span>(<span class="c-var">$response</span>->transactionId);
+<span class="c-var">$txt</span> = <span class="c-var">$hub</span>-><span class="c-fn">getPixCopyPaste</span>(<span class="c-var">$response</span>->transactionId);</pre>
+                    </div>
+                </div>
+                <div class="docs-section" id="doc-credit">
+                    <h2 class="docs-h2">💳 Cartão de Crédito</h2>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">criar pagamento</span></div>
+                        <pre><span class="c-kw">use</span> <span class="c-cls">IsraelNogueira\PaymentHub\DataObjects\Requests\CreditCardPaymentRequest</span>;
+
+<span class="c-var">$request</span> = <span class="c-cls">CreditCardPaymentRequest</span>::<span class="c-fn">create</span>(
+    amount:           <span class="c-num">250.00</span>,
+    installments:     <span class="c-num">3</span>,
+    cardNumber:       <span class="c-str">'4111111111111111'</span>,
+    cardHolderName:   <span class="c-str">'JOAO SILVA'</span>,
+    cardExpiryMonth:  <span class="c-str">'12'</span>,
+    cardExpiryYear:   <span class="c-str">'2028'</span>,
+    cardCvv:          <span class="c-str">'123'</span>,
+    customerEmail:    <span class="c-str">'joao@teste.com'</span>,
+    customerDocument: <span class="c-str">'12345678900'</span>
+);
+
+<span class="c-var">$response</span> = <span class="c-var">$hub</span>-><span class="c-fn">createCreditCardPayment</span>(<span class="c-var">$request</span>);
+
+<span class="c-comment">// Tokenizar cartão</span>
+<span class="c-var">$token</span> = <span class="c-var">$hub</span>-><span class="c-fn">tokenizeCard</span>([<span class="c-str">'number'</span> => <span class="c-str">'4111...'</span>, <span class="c-str">'holderName'</span> => <span class="c-str">'JOAO'</span>, ...]);
+
+<span class="c-comment">// Pre-autorização</span>
+<span class="c-var">$hub</span>-><span class="c-fn">capturePreAuthorization</span>(<span class="c-var">$transactionId</span>);         <span class="c-comment">// total</span>
+<span class="c-var">$hub</span>-><span class="c-fn">capturePreAuthorization</span>(<span class="c-var">$transactionId</span>, <span class="c-num">100.00</span>); <span class="c-comment">// parcial</span>
+<span class="c-var">$hub</span>-><span class="c-fn">cancelPreAuthorization</span>(<span class="c-var">$transactionId</span>);</pre>
+                    </div>
+                </div>
+                <div class="docs-section" id="doc-debit">
+                    <h2 class="docs-h2">💳 Cartão de Débito</h2>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">criar pagamento</span></div>
+                        <pre><span class="c-kw">use</span> <span class="c-cls">IsraelNogueira\PaymentHub\DataObjects\Requests\DebitCardPaymentRequest</span>;
+
+<span class="c-var">$request</span> = <span class="c-cls">DebitCardPaymentRequest</span>::<span class="c-fn">create</span>(
+    amount:           <span class="c-num">89.90</span>,
+    cardNumber:       <span class="c-str">'5555555555554444'</span>,
+    cardHolderName:   <span class="c-str">'MARIA SILVA'</span>,
+    cardExpiryMonth:  <span class="c-str">'08'</span>,
+    cardExpiryYear:   <span class="c-str">'2027'</span>,
+    cardCvv:          <span class="c-str">'321'</span>,
+    customerEmail:    <span class="c-str">'maria@teste.com'</span>,
+    customerDocument: <span class="c-str">'12345678900'</span>
+);
+
+<span class="c-var">$response</span> = <span class="c-var">$hub</span>-><span class="c-fn">createDebitCardPayment</span>(<span class="c-var">$request</span>);
+
+<span class="c-kw">echo</span> <span class="c-var">$response</span>->transactionId; <span class="c-comment">// FAKE_DC_xyz789</span>
+<span class="c-kw">echo</span> <span class="c-var">$response</span>->rawResponse[<span class="c-str">'card_brand'</span>]; <span class="c-comment">// mastercard</span></pre>
+                    </div>
+                    <div class="tip-box">💡 Sem parcelamento — <code>DebitCardPaymentRequest</code> não aceita
+                        <code>installments</code>, diferente do cartão de crédito.</div>
+                </div>
+                <div class="docs-section" id="doc-boleto">
+                    <h2 class="docs-h2">🧾 Boleto</h2>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">criar boleto</span></div>
+                        <pre><span class="c-kw">use</span> <span class="c-cls">IsraelNogueira\PaymentHub\DataObjects\Requests\BoletoPaymentRequest</span>;
+
+<span class="c-var">$request</span> = <span class="c-cls">BoletoPaymentRequest</span>::<span class="c-fn">create</span>(
+    amount:           <span class="c-num">150.00</span>,
+    customerName:     <span class="c-str">'João Silva'</span>,
+    customerDocument: <span class="c-str">'12345678900'</span>,
+    customerEmail:    <span class="c-str">'joao@teste.com'</span>,
+    dueDate:          <span class="c-str">'2025-03-15'</span>,
+    description:      <span class="c-str">'Mensalidade março'</span>
+);
+
+<span class="c-var">$response</span> = <span class="c-var">$hub</span>-><span class="c-fn">createBoleto</span>(<span class="c-var">$request</span>);
+
+<span class="c-var">$url</span> = <span class="c-var">$hub</span>-><span class="c-fn">getBoletoUrl</span>(<span class="c-var">$response</span>->transactionId);
+<span class="c-var">$hub</span>-><span class="c-fn">cancelBoleto</span>(<span class="c-var">$response</span>->transactionId);</pre>
+                    </div>
+                </div>
+                <div class="docs-section" id="doc-split">
+                    <h2 class="docs-h2">🔀 Split de Pagamento</h2>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">dividir recebimento</span></div>
+                        <pre><span class="c-kw">use</span> <span class="c-cls">IsraelNogueira\PaymentHub\DataObjects\Requests\SplitPaymentRequest</span>;
+
+<span class="c-var">$request</span> = <span class="c-kw">new</span> <span class="c-cls">SplitPaymentRequest</span>(
+    amount: <span class="c-num">1000.00</span>,
+    splits: [
+        [<span class="c-str">'account_id'</span> => <span class="c-str">'FAKE_ACC_1'</span>, <span class="c-str">'percentage'</span> => <span class="c-num">70</span>],
+        [<span class="c-str">'account_id'</span> => <span class="c-str">'FAKE_ACC_2'</span>, <span class="c-str">'percentage'</span> => <span class="c-num">30</span>],
+    ]
+);
+
+<span class="c-var">$response</span> = <span class="c-var">$hub</span>-><span class="c-fn">createSplitPayment</span>(<span class="c-var">$request</span>);</pre>
+                    </div>
+                </div>
+                <div class="docs-section" id="doc-link">
+                    <h2 class="docs-h2">🔗 Link de Pagamento</h2>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">criar link de pagamento</span></div>
+                        <pre><span class="c-kw">use</span> <span class="c-cls">IsraelNogueira\PaymentHub\DataObjects\Requests\PaymentLinkRequest</span>;
+
+<span class="c-var">$request</span> = <span class="c-kw">new</span> <span class="c-cls">PaymentLinkRequest</span>(
+    amount:      <span class="c-num">99.90</span>,
+    description: <span class="c-str">'Produto XYZ'</span>
+);
+
+<span class="c-var">$link</span> = <span class="c-var">$hub</span>-><span class="c-fn">createPaymentLink</span>(<span class="c-var">$request</span>);
+
+<span class="c-kw">echo</span> <span class="c-var">$link</span>->linkId; <span class="c-comment">// FAKE_LINK_abc</span>
+<span class="c-kw">echo</span> <span class="c-var">$link</span>->url;    <span class="c-comment">// URL pronta pra compartilhar</span>
+<span class="c-kw">echo</span> <span class="c-var">$link</span>->status;</pre>
+                    </div>
+                </div>
+                <div class="docs-section" id="doc-customers">
+                    <h2 class="docs-h2">👥 Clientes</h2>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">CRUD de clientes</span></div>
+                        <pre><span class="c-kw">use</span> <span class="c-cls">IsraelNogueira\PaymentHub\DataObjects\Requests\CustomerRequest</span>;
+
+<span class="c-var">$customer</span> = <span class="c-var">$hub</span>-><span class="c-fn">createCustomer</span>(<span class="c-kw">new</span> <span class="c-cls">CustomerRequest</span>(
+    name:           <span class="c-str">'João Silva'</span>,
+    email:          <span class="c-str">'joao@teste.com'</span>,
+    documentNumber: <span class="c-str">'12345678900'</span>,
+    phone:          <span class="c-str">'11999999999'</span>
+));
+
+<span class="c-var">$hub</span>-><span class="c-fn">getCustomer</span>(<span class="c-var">$customer</span>->customerId);
+<span class="c-var">$hub</span>-><span class="c-fn">updateCustomer</span>(<span class="c-var">$customer</span>->customerId, [<span class="c-str">'email'</span> => <span class="c-str">'novo@teste.com'</span>]);
+<span class="c-var">$hub</span>-><span class="c-fn">listCustomers</span>(); <span class="c-comment">// array com todos</span></pre>
+                    </div>
+                </div>
+                <div class="docs-section" id="doc-subscriptions">
+                    <h2 class="docs-h2">🔁 Assinaturas</h2>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">gerenciar assinaturas</span></div>
+                        <pre><span class="c-kw">use</span> <span class="c-cls">IsraelNogueira\PaymentHub\DataObjects\Requests\SubscriptionRequest</span>;
+
+<span class="c-var">$request</span> = <span class="c-cls">SubscriptionRequest</span>::<span class="c-fn">create</span>(
+    amount:      <span class="c-num">49.90</span>,
+    interval:    <span class="c-str">'monthly'</span>,
+    customerId:  <span class="c-str">'FAKE_CUSTOMER_abc'</span>,
+    cardToken:   <span class="c-str">'FAKE_TOKEN_xyz'</span>,
+    description: <span class="c-str">'Plano Premium'</span>
+);
+
+<span class="c-var">$sub</span> = <span class="c-var">$hub</span>-><span class="c-fn">createSubscription</span>(<span class="c-var">$request</span>);
+
+<span class="c-var">$hub</span>-><span class="c-fn">cancelSubscription</span>(<span class="c-var">$sub</span>->subscriptionId);
+<span class="c-var">$hub</span>-><span class="c-fn">suspendSubscription</span>(<span class="c-var">$sub</span>->subscriptionId);
+<span class="c-var">$hub</span>-><span class="c-fn">reactivateSubscription</span>(<span class="c-var">$sub</span>->subscriptionId);
+<span class="c-var">$hub</span>-><span class="c-fn">updateSubscription</span>(<span class="c-var">$sub</span>->subscriptionId, [<span class="c-str">'value'</span> => <span class="c-num">59.90</span>]);</pre>
+                    </div>
+                </div>
+                <div class="docs-section" id="doc-transactions">
+                    <h2 class="docs-h2">📊 Transações</h2>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">consultar e listar</span></div>
+                        <pre><span class="c-var">$status</span> = <span class="c-var">$hub</span>-><span class="c-fn">getTransactionStatus</span>(<span class="c-str">'FAKE_PIX_abc'</span>);
+<span class="c-kw">echo</span> <span class="c-var">$status</span>->status->label();
+
+<span class="c-comment">// Lista todas as transações</span>
+<span class="c-var">$transactions</span> = <span class="c-var">$hub</span>-><span class="c-fn">listTransactions</span>();
+
+<span class="c-kw">foreach</span> (<span class="c-var">$transactions</span> <span class="c-kw">as</span> <span class="c-var">$txn</span>) {
+    <span class="c-kw">echo</span> <span class="c-var">$txn</span>[<span class="c-str">'id'</span>] . <span class="c-str">' - '</span> . <span class="c-var">$txn</span>[<span class="c-str">'status'</span>];
+}</pre>
+                    </div>
+                </div>
+                <div class="docs-section" id="doc-refunds">
+                    <h2 class="docs-h2">💰 Estornos</h2>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">estorno total e parcial</span></div>
+                        <pre><span class="c-kw">use</span> <span class="c-cls">IsraelNogueira\PaymentHub\DataObjects\Requests\RefundRequest</span>;
+
+<span class="c-comment">// Estorno total</span>
+<span class="c-var">$request</span>  = <span class="c-cls">RefundRequest</span>::<span class="c-fn">create</span>(transactionId: <span class="c-str">'FAKE_CC_abc'</span>, reason: <span class="c-str">'Solicitado'</span>);
+<span class="c-var">$response</span> = <span class="c-var">$hub</span>-><span class="c-fn">refund</span>(<span class="c-var">$request</span>);
+
+<span class="c-comment">// Estorno parcial</span>
+<span class="c-var">$response</span> = <span class="c-var">$hub</span>-><span class="c-fn">partialRefund</span>(<span class="c-str">'FAKE_CC_abc'</span>, <span class="c-num">50.00</span>);
+
+<span class="c-comment">// Chargeback</span>
+<span class="c-var">$hub</span>-><span class="c-fn">getChargebacks</span>([<span class="c-str">'status'</span> => <span class="c-str">'pending'</span>]);
+<span class="c-var">$hub</span>-><span class="c-fn">disputeChargeback</span>(<span class="c-str">'FAKE_CB_abc'</span>, [<span class="c-str">'evidence'</span> => [<span class="c-str">'nota.pdf'</span>]]);</pre>
+                    </div>
+                </div>
+                <div class="docs-section" id="doc-wallets">
+                    <h2 class="docs-h2">👛 Wallets</h2>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">carteiras digitais</span></div>
+                        <pre><span class="c-kw">use</span> <span class="c-cls">IsraelNogueira\PaymentHub\DataObjects\Requests\WalletRequest</span>;
+
+<span class="c-var">$wallet</span> = <span class="c-var">$hub</span>-><span class="c-fn">createWallet</span>(<span class="c-kw">new</span> <span class="c-cls">WalletRequest</span>(customerId: <span class="c-str">'FAKE_CUST_abc'</span>));
+<span class="c-var">$id</span>     = <span class="c-var">$wallet</span>->walletId; <span class="c-comment">// FAKE_WALLET_xyz</span>
+
+<span class="c-var">$hub</span>-><span class="c-fn">addBalance</span>(<span class="c-var">$id</span>, <span class="c-num">100.00</span>);
+<span class="c-var">$hub</span>-><span class="c-fn">deductBalance</span>(<span class="c-var">$id</span>, <span class="c-num">30.00</span>);
+
+<span class="c-var">$balance</span> = <span class="c-var">$hub</span>-><span class="c-fn">getWalletBalance</span>(<span class="c-var">$id</span>);
+<span class="c-kw">echo</span> <span class="c-str">"R$ "</span> . <span class="c-var">$balance</span>->balance;
+
+<span class="c-comment">// Transferência entre wallets</span>
+<span class="c-var">$hub</span>-><span class="c-fn">transferBetweenWallets</span>(<span class="c-str">'FAKE_WALLET_1'</span>, <span class="c-str">'FAKE_WALLET_2'</span>, <span class="c-num">75.00</span>);</pre>
+                    </div>
+                </div>
+                <div class="docs-section" id="doc-subaccounts">
+                    <h2 class="docs-h2">🏢 Sub-contas</h2>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">marketplace / multi-tenant</span></div>
+                        <pre><span class="c-kw">use</span> <span class="c-cls">IsraelNogueira\PaymentHub\DataObjects\Requests\SubAccountRequest</span>;
+
+<span class="c-var">$sub</span> = <span class="c-var">$hub</span>-><span class="c-fn">createSubAccount</span>(<span class="c-kw">new</span> <span class="c-cls">SubAccountRequest</span>(
+    name:           <span class="c-str">'Vendedor Teste'</span>,
+    email:          <span class="c-str">'vendedor@teste.com'</span>,
+    documentNumber: <span class="c-str">'12345678900'</span>
+));
+
+<span class="c-var">$hub</span>-><span class="c-fn">getSubAccount</span>(<span class="c-var">$sub</span>->subAccountId);
+<span class="c-var">$hub</span>-><span class="c-fn">updateSubAccount</span>(<span class="c-var">$sub</span>->subAccountId, [<span class="c-str">'email'</span> => <span class="c-str">'novo@teste.com'</span>]);
+<span class="c-var">$hub</span>-><span class="c-fn">activateSubAccount</span>(<span class="c-var">$sub</span>->subAccountId);
+<span class="c-var">$hub</span>-><span class="c-fn">deactivateSubAccount</span>(<span class="c-var">$sub</span>->subAccountId);</pre>
+                    </div>
+                </div>
+                <div class="docs-section" id="doc-escrow">
+                    <h2 class="docs-h2">🔒 Escrow (Custódia)</h2>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">custódia de fundos</span></div>
+                        <pre><span class="c-kw">use</span> <span class="c-cls">IsraelNogueira\PaymentHub\DataObjects\Requests\EscrowRequest</span>;
+
+<span class="c-var">$escrow</span> = <span class="c-var">$hub</span>-><span class="c-fn">holdInEscrow</span>(<span class="c-kw">new</span> <span class="c-cls">EscrowRequest</span>(
+    transactionId: <span class="c-str">'FAKE_CC_abc'</span>, amount: <span class="c-num">500.00</span>
+));
+
+<span class="c-var">$hub</span>-><span class="c-fn">releaseEscrow</span>(<span class="c-var">$escrow</span>->escrowId);
+<span class="c-var">$hub</span>-><span class="c-fn">partialReleaseEscrow</span>(<span class="c-var">$escrow</span>->escrowId, <span class="c-num">200.00</span>);
+<span class="c-var">$hub</span>-><span class="c-fn">cancelEscrow</span>(<span class="c-var">$escrow</span>->escrowId);</pre>
+                    </div>
+                </div>
+                <div class="docs-section" id="doc-transfers">
+                    <h2 class="docs-h2">💸 Transferências</h2>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">transferir fundos</span></div>
+                        <pre><span class="c-kw">use</span> <span class="c-cls">IsraelNogueira\PaymentHub\DataObjects\Requests\TransferRequest</span>;
+<span class="c-kw">use</span> <span class="c-cls">IsraelNogueira\PaymentHub\ValueObjects\Money</span>;
+<span class="c-kw">use</span> <span class="c-cls">IsraelNogueira\PaymentHub\Enums\Currency</span>;
+
+<span class="c-var">$request</span> = <span class="c-kw">new</span> <span class="c-cls">TransferRequest</span>(
+    money:       <span class="c-cls">Money</span>::<span class="c-fn">from</span>(<span class="c-num">500.00</span>, <span class="c-cls">Currency</span>::BRL),
+    description: <span class="c-str">'Repasse marketplace'</span>,
+    metadata:    [<span class="c-str">'pix_key'</span> => <span class="c-str">'cnpj@empresa.com'</span>]
+);
+
+<span class="c-var">$hub</span>-><span class="c-fn">transfer</span>(<span class="c-var">$request</span>);
+<span class="c-var">$hub</span>-><span class="c-fn">scheduleTransfer</span>(<span class="c-var">$request</span>, <span class="c-str">'2025-03-15'</span>);
+<span class="c-var">$hub</span>-><span class="c-fn">cancelScheduledTransfer</span>(<span class="c-str">'FAKE_TRANSFER_abc'</span>);</pre>
+                    </div>
+                </div>
+                <div class="docs-section" id="doc-balance">
+                    <h2 class="docs-h2">💰 Saldo e Conciliação</h2>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">consultar saldo</span></div>
+                        <pre><span class="c-var">$balance</span> = <span class="c-var">$hub</span>-><span class="c-fn">getBalance</span>();
+<span class="c-kw">echo</span> <span class="c-str">"R$ "</span> . <span class="c-var">$balance</span>->balance;          <span class="c-comment">// 10000.00 padrão</span>
+<span class="c-kw">echo</span> <span class="c-str">"R$ "</span> . <span class="c-var">$balance</span>->availableBalance;
+
+<span class="c-comment">// Agenda de liquidação</span>
+<span class="c-var">$schedule</span> = <span class="c-var">$hub</span>-><span class="c-fn">getSettlementSchedule</span>([<span class="c-str">'date_from'</span> => <span class="c-str">'2025-01-01'</span>]);
+
+<span class="c-comment">// Antecipação de recebíveis</span>
+<span class="c-var">$hub</span>-><span class="c-fn">anticipateReceivables</span>([<span class="c-str">'FAKE_PIX_abc'</span>, <span class="c-str">'FAKE_CC_xyz'</span>]);</pre>
+                    </div>
+                </div>
+                <div class="docs-section" id="doc-fraud">
+                    <h2 class="docs-h2">🛡️ Antifraude</h2>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">análise e blacklist</span></div>
+                        <pre><span class="c-comment">// Análise retorna risk_score aleatório (1-100)</span>
+<span class="c-var">$analysis</span> = <span class="c-var">$hub</span>-><span class="c-fn">analyzeTransaction</span>(<span class="c-str">'FAKE_CC_abc'</span>);
+<span class="c-comment">// ['risk_score' => 42, 'status' => 'approved', 'recommendation' => 'approve']</span>
+
+<span class="c-var">$hub</span>-><span class="c-fn">addToBlacklist</span>(<span class="c-str">'12345678900'</span>, <span class="c-str">'cpf'</span>);
+<span class="c-var">$hub</span>-><span class="c-fn">removeFromBlacklist</span>(<span class="c-str">'12345678900'</span>, <span class="c-str">'cpf'</span>);</pre>
+                    </div>
+                </div>
+                <div class="docs-section" id="doc-webhooks">
+                    <h2 class="docs-h2">🔔 Webhooks</h2>
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">registrar e gerenciar webhooks</span>
+                        </div>
+                        <pre><span class="c-var">$wh</span> = <span class="c-var">$hub</span>-><span class="c-fn">registerWebhook</span>(
+    url:    <span class="c-str">'https://meusite.com/webhook'</span>,
+    events: [<span class="c-str">'payment.approved'</span>, <span class="c-str">'payment.refunded'</span>]
+);
+
+<span class="c-var">$hub</span>-><span class="c-fn">listWebhooks</span>();
+<span class="c-var">$hub</span>-><span class="c-fn">deleteWebhook</span>(<span class="c-var">$wh</span>[<span class="c-str">'webhook_id'</span>]);</pre>
+                    </div>
+                </div>
+                <div class="docs-section" id="doc-cards-table">
+                    <h2 class="docs-h2">🎲 Cartões de Teste</h2>
+                    <p class="docs-p">Use estes números no FakeBankGateway para simular aprovação ou recusa:</p>
+                    <div class="docs-table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Status</th>
+                                    <th>Bandeira</th>
+                                    <th>Motivo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="font-family:var(--mono);color:var(--text)">4111 1111 1111 1111</td>
+                                    <td class="yes">✓ Aprovado</td>
+                                    <td>Visa</td>
+                                    <td>Cartão válido padrão</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-family:var(--mono);color:var(--text)">4111 1111 1111 1112</td>
+                                    <td class="no">✕ Recusado</td>
+                                    <td>Visa</td>
+                                    <td>Saldo insuficiente</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-family:var(--mono);color:var(--text)">5555 5555 5555 4444</td>
+                                    <td class="no">✕ Recusado</td>
+                                    <td>Mastercard</td>
+                                    <td>Cartão bloqueado</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-family:var(--mono);color:var(--text)">0000 0000 0000 0000</td>
+                                    <td class="no">✕ Recusado</td>
+                                    <td>—</td>
+                                    <td>Cartão inválido</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="warn-box">⚠️ <span>O FakeBankGateway é <strong>apenas para testes</strong>. Nunca use em
+                            produção. Não valida CPF, cartões reais ou envia webhooks de verdade.</span></div>
+                </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            </div><!-- /docs-content -->
+        </div><!-- /docs-layout -->
+    </section>
+
+    <!-- INSTALL -->
+    <section class="surface-section" id="install" style="background:var(--bg);border-color:var(--border)">
+        <div class="surface-inner">
+            <div class="section-label">// instalação</div>
+            <h2 class="section-title">Pronto em <em>30 segundos</em></h2>
+            <p class="section-sub">Um composer install e você já tem acesso a todos os gateways.</p>
+            <div class="install-steps">
+                <div class="step-card">
+                    <div class="step-head"><span class="step-num">01</span><span class="step-title">Instalar via
+                            Composer</span></div>
+                    <pre><span class="c-comment"># terminal</span>
+<span class="c-fn">composer</span> <span class="c-kw">require</span>
+  <span class="c-str">israel-nogueira/payment-hub</span></pre>
+                </div>
+                <div class="step-card">
+                    <div class="step-head"><span class="step-num">02</span><span class="step-title">Teste sem API
+                            real</span></div>
+                    <pre><span class="c-var">$hub</span> = <span class="c-kw">new</span> <span class="c-cls">PaymentHub</span>(
+  <span class="c-kw">new</span> <span class="c-cls">FakeBankGateway</span>()
+);
+
+<span class="c-var">$pix</span> = <span class="c-var">$hub</span>-><span class="c-fn">createPixPayment</span>(
+  <span class="c-cls">PixPaymentRequest</span>::<span class="c-fn">create</span>(
+    amount: <span class="c-num">99.90</span>,
+    customerEmail:
+      <span class="c-str">'dev@local.com'</span>
+  )
+);</pre>
+                </div>
+                <div class="step-card">
+                    <div class="step-head"><span class="step-num">03</span><span class="step-title">Vai para
+                            produção</span></div>
+                    <pre><span class="c-comment">// Só troca o gateway</span>
+<span class="c-var">$hub</span> = <span class="c-kw">new</span> <span class="c-cls">PaymentHub</span>(
+  <span class="c-kw">new</span> <span class="c-cls">AsaasGateway</span>([
+    <span class="c-str">'api_key'</span> =>
+      <span class="c-var">$_ENV</span>[<span class="c-str">'ASAAS_KEY'</span>],
+    <span class="c-str">'sandbox'</span> => <span class="c-kw">false</span>,
+  ])
+);
+<span class="c-comment">// O resto? Igual. ✓</span></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+        <div class="cta-bg"></div>
+        <div style="position:relative;z-index:1;max-width:600px;margin:0 auto">
+            <div class="section-label" style="justify-content:center;display:flex;margin-bottom:1rem">// comece agora
+            </div>
+            <h2>Sua próxima integração<br>de pagamento <em>já deveria estar pronta</em></h2>
+            <p>Código aberto, MIT License, documentação completa em português.</p>
+            <div class="cta-actions">
+                <a href="https://packagist.org/packages/israel-nogueira/payment-hub" class="btn-primary"
+                    target="_blank">↓ Instalar no Composer</a>
+                <a href="https://github.com/israel-nogueira/payment-hub" class="btn-secondary" target="_blank">Ver no
+                    GitHub</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <span>payment-hub — MIT License · Feito por <a href="https://israelnogueira.com"
+                target="_blank">@israel-nogueira</a></span>
+        <div class="footer-links">
+            <a href="https://github.com/israel-nogueira/payment-hub" target="_blank">GitHub</a>
+            <a href="https://packagist.org/packages/israel-nogueira/payment-hub" target="_blank">Packagist</a>
+        </div>
+    </footer>
+
+</body>
+
+</html>

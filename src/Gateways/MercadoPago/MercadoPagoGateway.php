@@ -192,10 +192,10 @@ class MercadoPagoGateway implements PaymentGatewayInterface
             ];
         }
 
-        if ($request->documentNumber) {
+        if ($request->document?->value()) {
             $data['identification'] = [
-                'type' => strlen(preg_replace('/\D/', '', $request->documentNumber)) === 11 ? 'CPF' : 'CNPJ',
-                'number' => preg_replace('/\D/', '', $request->documentNumber),
+                'type' => strlen(preg_replace('/\D/', '', $request->document?->value())) === 11 ? 'CPF' : 'CNPJ',
+                'number' => preg_replace('/\D/', '', $request->document?->value()),
             ];
         }
 
@@ -283,13 +283,12 @@ class MercadoPagoGateway implements PaymentGatewayInterface
 
         $response = $this->request('POST', '/v1/payments', $data);
 
-        $money = Money::from($response['transaction_amount'], Currency::BRL);
-
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: $response['status'] === 'approved',
             transactionId: (string)$response['id'],
-            status: $this->mapMercadoPagoStatus($response['status']),
-            money: $money,
+            status: $response['status'],
+            amount: $response['transaction_amount'],
+            currency: 'BRL',
             message: $response['status'] === 'approved' ? 'PIX payment approved' : 'PIX payment pending',
             rawResponse: $response,
             metadata: [
@@ -310,6 +309,13 @@ class MercadoPagoGateway implements PaymentGatewayInterface
     {
         $response = $this->request('GET', "/v1/payments/{$transactionId}");
         return $response['point_of_interaction']['transaction_data']['qr_code'] ?? '';
+    }
+    
+    // ==================== PAGAMENTO GENÉRICO ====================
+    
+    public function createPayment(array $data): PaymentResponse
+    {
+        throw new GatewayException('Mercado Pago does not have a generic payment endpoint. Use createPixPayment() or createCreditCardPayment().');
     }
     
     // ==================== CARTÃO DE CRÉDITO ====================
@@ -358,13 +364,12 @@ class MercadoPagoGateway implements PaymentGatewayInterface
 
         $response = $this->request('POST', '/v1/payments', $data);
 
-        $money = Money::from($response['transaction_amount'], Currency::fromString($response['currency_id']));
-
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: $response['status'] === 'approved',
             transactionId: (string)$response['id'],
-            status: $this->mapMercadoPagoStatus($response['status']),
-            money: $money,
+            status: $response['status'],
+            amount: $response['transaction_amount'],
+            currency: $response['currency_id'],
             message: $response['status'] === 'approved' ? 'Payment approved' : $response['status_detail'],
             rawResponse: $response,
             metadata: [
@@ -432,23 +437,22 @@ class MercadoPagoGateway implements PaymentGatewayInterface
         return $response['id'];
     }
     
-    public function capturePreAuthorization(string $transactionId, ?float $amount = null): PaymentResponse
+    public function capturePreAuthorization(string $transactionId, ?Money $amount = null): PaymentResponse
     {
         $data = ['capture' => true];
         
         if ($amount !== null) {
-            $data['transaction_amount'] = $amount;
+            $data['transaction_amount'] = $amount->amount();
         }
 
         $response = $this->request('PUT', "/v1/payments/{$transactionId}", $data);
 
-        $money = Money::from($response['transaction_amount'], Currency::fromString($response['currency_id']));
-
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: (string)$response['id'],
-            status: $this->mapMercadoPagoStatus($response['status']),
-            money: $money,
+            status: $response['status'],
+            amount: $response['transaction_amount'],
+            currency: $response['currency_id'],
             message: 'Pre-authorization captured successfully',
             rawResponse: $response
         );
@@ -460,11 +464,12 @@ class MercadoPagoGateway implements PaymentGatewayInterface
             'status' => 'cancelled'
         ]);
 
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: (string)$response['id'],
-            status: PaymentStatus::CANCELLED,
-            money: null,
+            status: 'cancelled',
+            amount: null,
+            currency: 'BRL',
             message: 'Pre-authorization cancelled successfully',
             rawResponse: $response
         );
@@ -489,13 +494,12 @@ class MercadoPagoGateway implements PaymentGatewayInterface
 
         $response = $this->request('POST', '/v1/payments', $data);
 
-        $money = Money::from($response['transaction_amount'], Currency::fromString($response['currency_id']));
-
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: $response['status'] === 'approved',
             transactionId: (string)$response['id'],
-            status: $this->mapMercadoPagoStatus($response['status']),
-            money: $money,
+            status: $response['status'],
+            amount: $response['transaction_amount'],
+            currency: $response['currency_id'],
             message: $response['status'] === 'approved' ? 'Debit payment approved' : $response['status_detail'],
             rawResponse: $response
         );
@@ -535,13 +539,12 @@ class MercadoPagoGateway implements PaymentGatewayInterface
 
         $response = $this->request('POST', '/v1/payments', $data);
 
-        $money = Money::from($response['transaction_amount'], Currency::BRL);
-
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: $response['status'] === 'pending',
             transactionId: (string)$response['id'],
-            status: $this->mapMercadoPagoStatus($response['status']),
-            money: $money,
+            status: $response['status'],
+            amount: $response['transaction_amount'],
+            currency: 'BRL',
             message: 'Boleto generated successfully',
             rawResponse: $response,
             metadata: [
@@ -564,11 +567,12 @@ class MercadoPagoGateway implements PaymentGatewayInterface
             'status' => 'cancelled'
         ]);
 
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: (string)$response['id'],
-            status: PaymentStatus::CANCELLED,
-            money: null,
+            status: 'cancelled',
+            amount: null,
+            currency: 'BRL',
             message: 'Boleto cancelled successfully',
             rawResponse: $response
         );
@@ -730,10 +734,10 @@ class MercadoPagoGateway implements PaymentGatewayInterface
         );
     }
     
-    public function partialRefund(string $transactionId, float $amount): RefundResponse
+    public function partialRefund(string $transactionId, Money $amount): RefundResponse
     {
         $response = $this->request('POST', "/v1/payments/{$transactionId}/refunds", [
-            'amount' => $amount
+            'amount' => $amount->amount()
         ]);
 
         $money = Money::from($response['amount'], Currency::BRL);
@@ -786,11 +790,12 @@ class MercadoPagoGateway implements PaymentGatewayInterface
 
         $response = $this->request('POST', '/v1/advanced_payments', $data);
 
-        return new PaymentResponse(
+        return PaymentResponse::create(
             success: true,
             transactionId: (string)$response['id'],
-            status: $this->mapMercadoPagoStatus($response['status']),
-            money: Money::from($response['transaction_amount'], Currency::BRL),
+            status: $response['status'],
+            amount: $response['transaction_amount'],
+            currency: 'BRL',
             message: 'Split payment created successfully',
             rawResponse: $response
         );
@@ -830,12 +835,12 @@ class MercadoPagoGateway implements PaymentGatewayInterface
         throw new GatewayException('Wallets not directly supported - use Mercado Pago Money In/Out API');
     }
     
-    public function addBalance(string $walletId, float $amount): WalletResponse
+    public function addBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Balance management via Money In API - requires specific integration');
     }
     
-    public function deductBalance(string $walletId, float $amount): WalletResponse
+    public function deductBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Balance management via Money Out API - requires specific integration');
     }
@@ -845,7 +850,7 @@ class MercadoPagoGateway implements PaymentGatewayInterface
         throw new GatewayException('Use getBalance() to check Mercado Pago account balance');
     }
     
-    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, float $amount): TransferResponse
+    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, Money $amount): TransferResponse
     {
         throw new GatewayException('Wallet transfers not supported - use money_release for marketplace payments');
     }
@@ -863,7 +868,7 @@ class MercadoPagoGateway implements PaymentGatewayInterface
         throw new GatewayException('Use /v1/advanced_payments/{id}/disburses endpoint for money release');
     }
     
-    public function partialReleaseEscrow(string $escrowId, float $amount): EscrowResponse
+    public function partialReleaseEscrow(string $escrowId, Money $amount): EscrowResponse
     {
         throw new GatewayException('Use /v1/advanced_payments/{id}/disburses with amount parameter');
     }
@@ -911,7 +916,7 @@ class MercadoPagoGateway implements PaymentGatewayInterface
         ];
 
         if ($request->expiresAt) {
-            $data['expiration_date_to'] = date('c', strtotime($request->expiresAt));
+            $data['expiration_date_to'] = $request->expiresAt->format('c');
         }
 
         $response = $this->request('POST', '/checkout/preferences', $data);

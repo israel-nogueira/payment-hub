@@ -5,6 +5,9 @@ namespace IsraelNogueira\PaymentHub\DataObjects\Requests;
 use IsraelNogueira\PaymentHub\Enums\Currency;
 use IsraelNogueira\PaymentHub\Enums\SubscriptionInterval;
 use IsraelNogueira\PaymentHub\ValueObjects\Money;
+use IsraelNogueira\PaymentHub\ValueObjects\Email;
+use IsraelNogueira\PaymentHub\ValueObjects\CPF;
+use IsraelNogueira\PaymentHub\ValueObjects\CNPJ;
 use IsraelNogueira\PaymentHub\Exceptions\InvalidAmountException;
 
 /**
@@ -34,6 +37,9 @@ class SubscriptionRequest
         public readonly ?int $trialDays = null,
         public readonly ?int $cycles = null,
         public readonly ?string $startDate = null,
+        public readonly ?string $customerName = null,
+        public readonly CPF|CNPJ|null $customerDocument = null,
+        public readonly ?Email $customerEmail = null,
         public readonly ?array $metadata = null
     ) {
         // Validações
@@ -72,6 +78,9 @@ class SubscriptionRequest
         ?int $trialDays = null,
         ?int $cycles = null,
         ?string $startDate = null,
+        ?string $customerName = null,
+        ?string $customerDocument = null,
+        ?string $customerEmail = null,
         ?array $metadata = null
     ): self {
         // Converte Currency
@@ -87,6 +96,18 @@ class SubscriptionRequest
         // Cria Money
         $money = Money::from($amount, $currency);
 
+        // Cria Email se fornecido
+        $email = $customerEmail ? Email::fromString($customerEmail) : null;
+
+        // Cria CPF ou CNPJ se fornecido
+        $document = null;
+        if ($customerDocument) {
+            $cleaned = preg_replace('/\D/', '', $customerDocument);
+            $document = strlen($cleaned) === 11
+                ? CPF::fromString($customerDocument)
+                : CNPJ::fromString($customerDocument);
+        }
+
         return new self(
             money: $money,
             interval: $interval,
@@ -98,6 +119,9 @@ class SubscriptionRequest
             trialDays: $trialDays,
             cycles: $cycles,
             startDate: $startDate,
+            customerName: $customerName,
+            customerDocument: $document,
+            customerEmail: $email,
             metadata: $metadata
         );
     }
@@ -116,8 +140,21 @@ class SubscriptionRequest
             'trial_days' => $this->trialDays,
             'cycles' => $this->cycles,
             'start_date' => $this->startDate,
+            'customer_name' => $this->customerName,
+            'customer_document' => $this->customerDocument?->value(),
+            'customer_email' => $this->customerEmail?->value(),
             'metadata' => $this->metadata,
         ];
+    }
+
+    public function getCustomerEmail(): ?string
+    {
+        return $this->customerEmail?->value();
+    }
+
+    public function getCustomerDocument(): ?string
+    {
+        return $this->customerDocument?->value();
     }
 
     // Getters para compatibilidade

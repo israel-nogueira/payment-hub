@@ -36,6 +36,7 @@ use IsraelNogueira\PaymentHub\DataObjects\Responses\WalletResponse;
 use IsraelNogueira\PaymentHub\Enums\Currency;
 use IsraelNogueira\PaymentHub\Enums\PaymentStatus;
 use IsraelNogueira\PaymentHub\Exceptions\GatewayException;
+use IsraelNogueira\PaymentHub\ValueObjects\Money;
 
 /**
  * Gateway do Banco do Brasil para o PaymentHub.
@@ -79,6 +80,23 @@ use IsraelNogueira\PaymentHub\Exceptions\GatewayException;
  *
  * @author  PaymentHub
  * @version 2.1.0
+ */
+/**
+ * ⚠️ PENDÊNCIAS PARA VALIDAÇÃO FUTURA (não bloqueantes — FakeBankGateway cobre os testes atuais)
+ * ─────────────────────────────────────────────────────────────
+ * Os endpoints abaixo NÃO foram confirmados na documentação oficial (portal
+ * exige login) e vieram de SDKs de terceiros. Confirmar em app.developers.bb.com.br
+ * antes de integrar de verdade com o BB:
+ *
+ *   1. OAUTH_SANDBOX (self::OAUTH_SANDBOX = 'oauth.sandbox.bb.com.br/oauth/token')
+ *      → Docs oficiais de suporte do BB citam 'oauth.hm.bb.com.br' como o host
+ *        de homologação a liberar no firewall. 'oauth.sandbox.bb.com.br' aparece
+ *        só em SDK de terceiros. Pode estar errado/desatualizado.
+ *   2. PATH_CONTA ('/conta-corrente/v1') → sem confirmação pública encontrada.
+ *   3. PATH_PAG ('/pagamentos-lote/v1') → sem confirmação pública encontrada.
+ *
+ * Confirmados: API_PRODUCTION, OAUTH_PRODUCTION, PATH_PIX, PATH_BOLETO (batem
+ * com SDK oficial gerado via Swagger do BB).
  */
 class BancoDoBrasilGateway implements PaymentGatewayInterface
 {
@@ -428,6 +446,46 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
      *
      * @throws GatewayException Se a pixKey não estiver configurada.
      */
+    // ══════════════════════════════════════════════════════════
+    //  PAGAMENTO GENÉRICO
+    // ══════════════════════════════════════════════════════════
+
+    /**
+     * Roteia para PIX ou Boleto conforme os dados recebidos.
+     * BB não suporta cartão de crédito/débito via API — não há rota possível
+     * pra esses casos aqui (ver createCreditCardPayment/createDebitCardPayment).
+     *
+     * @throws GatewayException Se não for possível determinar o método de pagamento.
+     */
+    public function createPayment(array $data): PaymentResponse
+    {
+        if (isset($data['dueDate'])) {
+            $request = BoletoPaymentRequest::create(
+                amount: $data['amount'] ?? 0,
+                currency: $data['currency'] ?? 'BRL',
+                dueDate: $data['dueDate'] ?? null,
+                description: $data['description'] ?? null,
+                customerName: $data['customerName'] ?? null,
+                customerDocument: $data['customerDocument'] ?? null,
+                customerEmail: $data['customerEmail'] ?? null,
+                customerAddress: $data['customerAddress'] ?? null
+            );
+            return $this->createBoleto($request);
+        }
+
+        $request = PixPaymentRequest::create(
+            amount: $data['amount'] ?? 0,
+            currency: $data['currency'] ?? 'BRL',
+            description: $data['description'] ?? null,
+            customerName: $data['customerName'] ?? null,
+            customerDocument: $data['customerDocument'] ?? null,
+            customerEmail: $data['customerEmail'] ?? null,
+            expiresInMinutes: $data['expiresInMinutes'] ?? null,
+            metadata: $data['metadata'] ?? null
+        );
+        return $this->createPixPayment($request);
+    }
+
     public function createPixPayment(PixPaymentRequest $request): PaymentResponse
     {
         if ($this->pixKey === '') {
@@ -480,9 +538,9 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
         return PaymentResponse::create(
             success:       true,
             transactionId: (string) ($response['txid'] ?? $txid),
-            status:        PaymentStatus::PENDING,
+            status:        PaymentStatus::PENDING->value,
             amount:        $amount,
-            currency:      Currency::BRL,
+            currency:      Currency::BRL->value,
             message:       'Cobrança PIX criada com sucesso',
             rawResponse:   $response,
             metadata:      [
@@ -544,7 +602,7 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
      *
      * @throws GatewayException
      */
-    public function capturePreAuthorization(string $transactionId, ?float $amount = null): PaymentResponse
+    public function capturePreAuthorization(string $transactionId, ?Money $amount = null): PaymentResponse
     {
         throw new GatewayException(
             'Pré-autorização não disponível no Banco do Brasil. Use Adyen, Stripe ou PagarMe.'
@@ -691,9 +749,9 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
         return PaymentResponse::create(
             success:       true,
             transactionId: (string) ($response['numero'] ?? $nossoNumero),
-            status:        PaymentStatus::PENDING,
+            status:        PaymentStatus::PENDING->value,
             amount:        $request->getAmount(),
-            currency:      Currency::BRL,
+            currency:      Currency::BRL->value,
             message:       'Boleto registrado com sucesso',
             rawResponse:   $response,
             metadata:      [
@@ -750,14 +808,13 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
             : (string) ($response['mensagem'] ?? 'Erro ao solicitar baixa do boleto');
 
         return PaymentResponse::create(
-            success:         $success,
-            transactionId:   $transactionId,
-            status:          $success ? PaymentStatus::CANCELLED : PaymentStatus::FAILED,
-            amount:          0,
-            currency:        Currency::BRL,
-            message:         $message,
-            gatewayResponse: $response,
-            rawResponse:     $response,
+            success:       $success,
+            transactionId: $transactionId,
+            status:        ($success ? PaymentStatus::CANCELLED : PaymentStatus::FAILED)->value,
+            amount:        0,
+            currency:      Currency::BRL->value,
+            message:       $message,
+            rawResponse:   $response,
         );
     }
 
@@ -830,9 +887,9 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
             return TransactionStatusResponse::create(
                 success:       true,
                 transactionId: $transactionId,
-                status:        $status,
+                status:        $status->value,
                 amount:        (float) ($response['valor']['original'] ?? 0),
-                currency:      Currency::BRL,
+                currency:      Currency::BRL->value,
                 rawResponse:   $response,
             );
         } catch (GatewayException $e) {
@@ -864,9 +921,9 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
         return TransactionStatusResponse::create(
             success:       true,
             transactionId: $transactionId,
-            status:        $status,
+            status:        $status->value,
             amount:        (float) ($response['valor']['original'] ?? 0),
-            currency:      Currency::BRL,
+            currency:      Currency::BRL->value,
             rawResponse:   $response,
         );
     }
@@ -961,8 +1018,10 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
      *
      * @throws GatewayException Se o valor for menor que o mínimo.
      */
-    public function partialRefund(string $transactionId, float $amount): RefundResponse
+    public function partialRefund(string $transactionId, Money $amount): RefundResponse
     {
+        $amount = $amount->amount();
+
         if ($amount < self::AMOUNT_MIN) {
             throw new GatewayException(
                 sprintf(
@@ -1105,7 +1164,7 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
      *
      * @throws GatewayException
      */
-    public function addBalance(string $walletId, float $amount): WalletResponse
+    public function addBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Wallets não disponíveis no Banco do Brasil.');
     }
@@ -1115,7 +1174,7 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
      *
      * @throws GatewayException
      */
-    public function deductBalance(string $walletId, float $amount): WalletResponse
+    public function deductBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Wallets não disponíveis no Banco do Brasil.');
     }
@@ -1127,7 +1186,7 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
     }
 
     /** @throws GatewayException */
-    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, float $amount): TransferResponse
+    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, Money $amount): TransferResponse
     {
         throw new GatewayException('Wallets não disponíveis no Banco do Brasil.');
     }
@@ -1151,7 +1210,7 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
     }
 
     /** @throws GatewayException */
-    public function partialReleaseEscrow(string $escrowId, float $amount): EscrowResponse
+    public function partialReleaseEscrow(string $escrowId, Money $amount): EscrowResponse
     {
         throw new GatewayException('Escrow não disponível no Banco do Brasil.');
     }
@@ -1170,17 +1229,27 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
      * Realiza uma transferência bancária com roteamento automático.
      *
      * Roteamento:
-     *   - Se metadata['pixKey'] estiver presente → usa PIX
-     *   - Caso contrário → usa TED (exige bankCode, agency, account, accountDigit)
+     *   - $request->isPixTransfer() (pixKey presente) → usa PIX
+     *   - Caso contrário → usa TED (exige bankCode, agencyNumber, accountNumber, documentNumber)
+     *
+     * @throws GatewayException
+     */
+    /**
+     * Realiza uma transferência bancária com roteamento automático.
+     *
+     * Roteamento:
+     *   - $request->isPixTransfer() (pixKey presente) → usa PIX
+     *   - Caso contrário → usa TED (exige bankCode, agencyNumber, accountNumber, documentNumber)
+     *
+     * FIX — Roteamento usava metadata['pixKey'], ignorando a propriedade nativa
+     * $request->pixKey / isPixTransfer() já validada no construtor de TransferRequest.
      *
      * @throws GatewayException
      */
     public function transfer(TransferRequest $request): TransferResponse
     {
-        $pixKey = $request->metadata['pixKey'] ?? null;
-
-        if ($pixKey !== null) {
-            return $this->transferViaPix($request, (string) $pixKey);
+        if ($request->isPixTransfer()) {
+            return $this->transferViaPix($request);
         }
 
         return $this->transferViaTed($request);
@@ -1188,19 +1257,28 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
 
     /**
      * Transferência via PIX (chave PIX do beneficiário).
+     *
+     * FIX — Propriedades corrigidas conforme TransferRequest real:
+     * beneficiaryName/beneficiaryDocument não existem na classe (era
+     * recipientName/documentNumber). pixKey lido diretamente de $request->pixKey.
+     *
+     * @param string|null $scheduledDate Se informado, agenda a transferência (dd.mm.yyyy).
      */
-    private function transferViaPix(TransferRequest $request, string $pixKey): TransferResponse
+    private function transferViaPix(TransferRequest $request, ?string $scheduledDate = null): TransferResponse
     {
-        // FIX 2.4 — Usar getAmount() consistentemente (ver mesma correção em createPixPayment).
         $amount = $request->getAmount();
 
         $payload = [
             'valor'            => $this->formatAmount($amount),
-            'chave'            => $pixKey,
+            'chave'            => $request->pixKey,
             'descricao'        => (string) ($request->description ?? ''),
-            'nomeDestinatario' => (string) ($request->beneficiaryName ?? ''),
-            'cpfCnpj'          => $this->sanitizeDocument((string) ($request->beneficiaryDocument ?? '')),
+            'nomeDestinatario' => (string) ($request->recipientName ?? ''),
+            'cpfCnpj'          => $this->sanitizeDocument((string) ($request->documentNumber ?? '')),
         ];
+
+        if ($scheduledDate !== null) {
+            $payload['dataAgendamento'] = $scheduledDate;
+        }
 
         $response = $this->request('POST', self::PATH_PIX . '/pix', $payload);
 
@@ -1214,34 +1292,43 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
                 'BB PIX: idPagamento ausente na resposta. Verifique o status antes de retentar.'
             )),
             amount:      $amount,
-            currency:    Currency::BRL,
-            status:      PaymentStatus::PENDING,
-            message:     'Transferência PIX enviada com sucesso',
+            currency:    Currency::BRL->value,
+            status:      PaymentStatus::PENDING->value,
+            message:     $scheduledDate !== null ? 'Transferência PIX agendada com sucesso' : 'Transferência PIX enviada com sucesso',
             rawResponse: array_merge($response, ['_method' => 'pix']),
         );
     }
 
     /**
      * Transferência via TED (dados bancários do beneficiário).
+     *
+     * FIX — Propriedades corrigidas conforme TransferRequest real:
+     * beneficiaryName/beneficiaryDocument/agency/account/accountDigit não existem
+     * (eram recipientName/documentNumber/agencyNumber/accountNumber). Não há campo
+     * de dígito separado — accountNumber já deve vir com o dígito (ex: "56789-0").
+     *
+     * @param string|null $scheduledDate Se informado, agenda a transferência (dd.mm.yyyy).
      */
-    private function transferViaTed(TransferRequest $request): TransferResponse
+    private function transferViaTed(TransferRequest $request, ?string $scheduledDate = null): TransferResponse
     {
-        // FIX 2.4 — Usar getAmount() consistentemente.
         $amount = $request->getAmount();
 
         $payload = [
             'valor'        => $this->formatAmount($amount),
             'descricao'    => (string) ($request->description ?? ''),
             'destinatario' => [
-                'nome'        => (string) ($request->beneficiaryName     ?? ''),
-                'cpfCnpj'     => $this->sanitizeDocument((string) ($request->beneficiaryDocument ?? '')),
-                'codigoBanco' => (string) ($request->bankCode            ?? ''),
-                'agencia'     => (string) ($request->agency              ?? ''),
-                'conta'       => (string) ($request->account             ?? ''),
-                'digitoConta' => (string) ($request->accountDigit        ?? ''),
+                'nome'        => (string) ($request->recipientName  ?? ''),
+                'cpfCnpj'     => $this->sanitizeDocument((string) ($request->documentNumber ?? '')),
+                'codigoBanco' => (string) ($request->bankCode       ?? ''),
+                'agencia'     => (string) ($request->agencyNumber   ?? ''),
+                'conta'       => (string) ($request->accountNumber  ?? ''),
                 'tipoConta'   => $request->accountType === 'savings' ? 'POUPANCA' : 'CORRENTE',
             ],
         ];
+
+        if ($scheduledDate !== null) {
+            $payload['dataAgendamento'] = $scheduledDate;
+        }
 
         $response = $this->request('POST', self::PATH_PAG . '/lotes-pagamentos/ted', $payload);
 
@@ -1252,9 +1339,9 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
                 'BB TED: idPagamento ausente na resposta. Verifique o status antes de retentar.'
             )),
             amount:      $amount,
-            currency:    Currency::BRL,
-            status:      PaymentStatus::PENDING,
-            message:     'Transferência TED enviada com sucesso',
+            currency:    Currency::BRL->value,
+            status:      PaymentStatus::PENDING->value,
+            message:     $scheduledDate !== null ? 'Transferência TED agendada com sucesso' : 'Transferência TED enviada com sucesso',
             rawResponse: array_merge($response, ['_method' => 'ted']),
         );
     }
@@ -1262,12 +1349,19 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
     /**
      * Agenda uma transferência para uma data futura.
      *
+     * FIX — $request->metadata é readonly; não é possível mutar o objeto.
+     * Agora roteia diretamente para transferViaPix/transferViaTed passando a
+     * data de agendamento como parâmetro, sem precisar recriar o TransferRequest.
+     *
      * @throws GatewayException
      */
     public function scheduleTransfer(TransferRequest $request, string $date): TransferResponse
     {
-        $request->metadata = array_merge($request->metadata ?? [], ['dataAgendamento' => $date]);
-        return $this->transfer($request);
+        if ($request->isPixTransfer()) {
+            return $this->transferViaPix($request, $date);
+        }
+
+        return $this->transferViaTed($request, $date);
     }
 
     /**
@@ -1283,8 +1377,8 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
             success:     true,
             transferId:  $transferId,
             amount:      0,
-            currency:    Currency::BRL,
-            status:      PaymentStatus::CANCELLED,
+            currency:    Currency::BRL->value,
+            status:      PaymentStatus::CANCELLED->value,
             message:     'Agendamento cancelado com sucesso',
             rawResponse: $response,
         );
@@ -1349,19 +1443,19 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
     // ══════════════════════════════════════════════════════════
 
     /** @throws GatewayException */
-    public function analyzeTransaction(array $data): array
+    public function analyzeTransaction(string $transactionId): array
     {
         throw new GatewayException('Antifraude não disponível no Banco do Brasil via API pública.');
     }
 
     /** @throws GatewayException */
-    public function addToBlacklist(array $data): bool
+    public function addToBlacklist(string $identifier, string $type): bool
     {
         throw new GatewayException('Blacklist/Antifraude não disponível no Banco do Brasil.');
     }
 
     /** @throws GatewayException */
-    public function removeFromBlacklist(string $id): bool
+    public function removeFromBlacklist(string $identifier, string $type): bool
     {
         throw new GatewayException('Blacklist/Antifraude não disponível no Banco do Brasil.');
     }
@@ -1389,17 +1483,16 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
 
         $response = $this->request('GET', self::PATH_CONTA . '/saldo', [], $query);
 
-        return BalanceResponse::create(
+        return new BalanceResponse(
             success:          true,
             balance:          (float) ($response['saldoContabil']   ?? 0),
             availableBalance: (float) ($response['saldoDisponivel'] ?? 0),
             pendingBalance:   0.0,
-            currency:         Currency::BRL,
-            rawResponse:      $response,
-            metadata:         [
-                'bloqueado_judicial'       => $response['bloqueioJudicial']      ?? 0,
+            currency:         Currency::BRL->value,
+            rawResponse:      array_merge($response, [
+                'bloqueado_judicial'       => $response['bloqueioJudicial']       ?? 0,
                 'bloqueado_administrativo' => $response['bloqueioAdministrativo'] ?? 0,
-            ],
+            ]),
         );
     }
 
@@ -1475,7 +1568,7 @@ class BancoDoBrasilGateway implements PaymentGatewayInterface
     }
 
     /** @throws GatewayException */
-    public function anticipateReceivables(array $data): array
+    public function anticipateReceivables(array $transactionIds): PaymentResponse
     {
         throw new GatewayException(
             'Antecipação de recebíveis não disponível via API pública do Banco do Brasil.'

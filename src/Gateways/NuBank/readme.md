@@ -117,7 +117,7 @@ O gateway usa `PixPaymentRequest` como veículo de dados por ser o tipo mais pr�
 ```php
 use IsraelNogueira\PaymentHub\DataObjects\Requests\PixPaymentRequest;
 
-$request = new PixPaymentRequest(
+$request = PixPaymentRequest::create(
     amount:           150.00,
     currency:         'BRL',
     customerName:     'João Silva',
@@ -250,7 +250,10 @@ echo $refund->refundId; // ID para acompanhar o estorno
 ### 5. Estorno parcial
 
 ```php
-$refund = $hub->partialRefund($pspReferenceId, 50.00);
+use IsraelNogueira\PaymentHub\ValueObjects\Money;
+use IsraelNogueira\PaymentHub\Enums\Currency;
+
+$refund = $hub->partialRefund($pspReferenceId, Money::from(50.00, Currency::BRL));
 ```
 
 > A soma dos estornos parciais não pode ultrapassar o valor total do pagamento.

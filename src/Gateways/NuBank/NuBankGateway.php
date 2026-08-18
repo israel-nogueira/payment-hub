@@ -28,7 +28,7 @@ use IsraelNogueira\PaymentHub\DataObjects\Responses\PaymentLinkResponse;
 use IsraelNogueira\PaymentHub\DataObjects\Responses\CustomerResponse;
 use IsraelNogueira\PaymentHub\DataObjects\Responses\BalanceResponse;
 use IsraelNogueira\PaymentHub\Enums\PaymentStatus;
-use IsraelNogueira\PaymentHub\Enums\Currency;
+use IsraelNogueira\PaymentHub\ValueObjects\Money;
 use IsraelNogueira\PaymentHub\Exceptions\GatewayException;
 
 /**
@@ -297,13 +297,12 @@ class NuBankGateway implements PaymentGatewayInterface
         $response = $this->request('POST', '/v1/checkouts/payments', $body);
 
         return PaymentResponse::create(
-            success:         isset($response['pspReferenceId']),
-            transactionId:   $response['pspReferenceId'] ?? '',
-            status:          $this->mapStatus($response['status'] ?? 'WAITING_PAYMENT_METHOD'),
-            amount:          $request->getAmount(),
-            currency:        Currency::BRL,
-            gatewayResponse: $response,
-            rawResponse: [
+            success:       isset($response['pspReferenceId']),
+            transactionId: $response['pspReferenceId'] ?? '',
+            status:        $this->mapStatus($response['status'] ?? 'WAITING_PAYMENT_METHOD')->value,
+            amount:        $request->getAmount(),
+            currency:      'BRL',
+            rawResponse:   [
                 // ⬇  DADO MAIS IMPORTANTE: redirecione o cliente para esta URL
                 '_paymentUrl'        => $response['paymentUrl'] ?? null,
                 '_paymentMethodType' => $response['paymentMethodType'] ?? 'nupay',
@@ -327,9 +326,9 @@ class NuBankGateway implements PaymentGatewayInterface
         return TransactionStatusResponse::create(
             success:       true,
             transactionId: $response['pspReferenceId'] ?? $transactionId,
-            status:        $this->mapStatus($response['status'] ?? 'WAITING_PAYMENT_METHOD'),
+            status:        $this->mapStatus($response['status'] ?? 'WAITING_PAYMENT_METHOD')->value,
             amount:        (float) ($response['amount']['value'] ?? 0),
-            currency:      Currency::BRL,
+            currency:      'BRL',
             rawResponse:   $response,
         );
     }
@@ -346,13 +345,12 @@ class NuBankGateway implements PaymentGatewayInterface
         $response = $this->request('POST', "/v1/checkouts/payments/{$transactionId}/cancel");
 
         return PaymentResponse::create(
-            success:         in_array($response['status'] ?? '', ['CANCELLING', 'CANCELLED'], true),
-            transactionId:   $response['pspReferenceId'] ?? $transactionId,
-            status:          $this->mapStatus($response['status'] ?? 'CANCELLED'),
-            amount:          0,
-            currency:        Currency::BRL,
-            gatewayResponse: $response,
-            rawResponse:     $response,
+            success:       in_array($response['status'] ?? '', ['CANCELLING', 'CANCELLED'], true),
+            transactionId: $response['pspReferenceId'] ?? $transactionId,
+            status:        $this->mapStatus($response['status'] ?? 'CANCELLED')->value,
+            amount:        0,
+            currency:      'BRL',
+            rawResponse:   $response,
         );
     }
 
@@ -390,10 +388,10 @@ class NuBankGateway implements PaymentGatewayInterface
         );
     }
 
-    public function partialRefund(string $transactionId, float $amount): RefundResponse
+    public function partialRefund(string $transactionId, Money $amount): RefundResponse
     {
         $body = [
-            'amount'              => ['value' => $amount, 'currency' => 'BRL'],
+            'amount'              => ['value' => $amount->amount(), 'currency' => 'BRL'],
             'transactionRefundId' => uniqid('partial_refund_', true),
         ];
 
@@ -403,7 +401,7 @@ class NuBankGateway implements PaymentGatewayInterface
             success:       in_array($response['status'] ?? '', ['REFUNDING', 'OPEN'], true),
             refundId:      $response['refundId'] ?? '',
             transactionId: $transactionId,
-            amount:        $amount,
+            amount:        $amount->amount(),
             status:        $this->mapStatus($response['status'] ?? 'REFUNDING')->value,
             rawResponse:   $response,
         );
@@ -449,6 +447,22 @@ class NuBankGateway implements PaymentGatewayInterface
         throw new GatewayException($msg, 501);
     }
 
+    // ==================== PAGAMENTO GENÉRICO ====================
+
+    public function createPayment(array $data): PaymentResponse
+    {
+        return $this->createPixPayment(PixPaymentRequest::create(
+            amount:           $data['amount'] ?? 0,
+            currency:         $data['currency'] ?? 'BRL',
+            description:      $data['description'] ?? null,
+            customerName:     $data['customerName'] ?? null,
+            customerDocument: $data['customerDocument'] ?? null,
+            customerEmail:    $data['customerEmail'] ?? null,
+            expiresInMinutes: $data['expiresInMinutes'] ?? null,
+            metadata:         $data['metadata'] ?? null
+        ));
+    }
+
     // PIX — NuPay e PIX são produtos completamente diferentes
     public function getPixQrCode(string $transactionId): string
     {
@@ -471,7 +485,7 @@ class NuBankGateway implements PaymentGatewayInterface
         $this->notSupported('tokenização de cartão', 'Asaas, PagarMe, C6Bank, Adyen, Stripe');
     }
 
-    public function capturePreAuthorization(string $transactionId, ?float $amount = null): PaymentResponse
+    public function capturePreAuthorization(string $transactionId, ?Money $amount = null): PaymentResponse
     {
         $this->notSupported('pré-autorização de cartão', 'Asaas, PagarMe, C6Bank, Adyen');
     }
@@ -580,12 +594,12 @@ class NuBankGateway implements PaymentGatewayInterface
         $this->notSupported('wallets', 'C6Bank, Asaas');
     }
 
-    public function addBalance(string $walletId, float $amount): WalletResponse
+    public function addBalance(string $walletId, Money $amount): WalletResponse
     {
         $this->notSupported('wallets', 'C6Bank, Asaas');
     }
 
-    public function deductBalance(string $walletId, float $amount): WalletResponse
+    public function deductBalance(string $walletId, Money $amount): WalletResponse
     {
         $this->notSupported('wallets', 'C6Bank, Asaas');
     }
@@ -595,7 +609,7 @@ class NuBankGateway implements PaymentGatewayInterface
         $this->notSupported('wallets', 'C6Bank, Asaas');
     }
 
-    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, float $amount): TransferResponse
+    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, Money $amount): TransferResponse
     {
         $this->notSupported('wallets', 'C6Bank, Asaas');
     }
@@ -611,7 +625,7 @@ class NuBankGateway implements PaymentGatewayInterface
         $this->notSupported('escrow/custódia', 'C6Bank, PagarMe');
     }
 
-    public function partialReleaseEscrow(string $escrowId, float $amount): EscrowResponse
+    public function partialReleaseEscrow(string $escrowId, Money $amount): EscrowResponse
     {
         $this->notSupported('escrow/custódia', 'C6Bank, PagarMe');
     }

@@ -28,6 +28,7 @@ use IsraelNogueira\PaymentHub\DataObjects\Responses\PaymentLinkResponse;
 use IsraelNogueira\PaymentHub\DataObjects\Responses\CustomerResponse;
 use IsraelNogueira\PaymentHub\DataObjects\Responses\BalanceResponse;
 use IsraelNogueira\PaymentHub\Exceptions\GatewayException;
+use IsraelNogueira\PaymentHub\ValueObjects\Money;
 
 class EtherGlobalAssetsGateway implements PaymentGatewayInterface
 {
@@ -153,6 +154,13 @@ class EtherGlobalAssetsGateway implements PaymentGatewayInterface
         throw new GatewayException('getPixCopyPaste: PIX key is returned in createPixPayment metadata');
     }
 
+    // ==================== PAGAMENTO GENÉRICO ====================
+
+    public function createPayment(array $data): PaymentResponse
+    {
+        throw new GatewayException('Ether Global Assets only supports PIX. Use createPixPayment().');
+    }
+
     // ==================== CARTÃO DE CRÉDITO ====================
     
     public function createCreditCardPayment(CreditCardPaymentRequest $request): PaymentResponse
@@ -165,7 +173,7 @@ class EtherGlobalAssetsGateway implements PaymentGatewayInterface
         throw new GatewayException('Card tokenization not supported by Ether Global Assets');
     }
 
-    public function capturePreAuthorization(string $transactionId, ?float $amount = null): PaymentResponse
+    public function capturePreAuthorization(string $transactionId, ?Money $amount = null): PaymentResponse
     {
         throw new GatewayException('Pre-authorization not supported by Ether Global Assets');
     }
@@ -290,7 +298,7 @@ class EtherGlobalAssetsGateway implements PaymentGatewayInterface
         throw new GatewayException('Refunds not supported by Ether Global Assets');
     }
 
-    public function partialRefund(string $transactionId, float $amount): RefundResponse
+    public function partialRefund(string $transactionId, Money $amount): RefundResponse
     {
         throw new GatewayException('Refunds not supported by Ether Global Assets');
     }
@@ -346,12 +354,12 @@ class EtherGlobalAssetsGateway implements PaymentGatewayInterface
         throw new GatewayException('Wallets not supported by Ether Global Assets');
     }
 
-    public function addBalance(string $walletId, float $amount): WalletResponse
+    public function addBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Wallets not supported by Ether Global Assets');
     }
 
-    public function deductBalance(string $walletId, float $amount): WalletResponse
+    public function deductBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Wallets not supported by Ether Global Assets');
     }
@@ -361,7 +369,7 @@ class EtherGlobalAssetsGateway implements PaymentGatewayInterface
         throw new GatewayException('Wallets not supported by Ether Global Assets');
     }
 
-    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, float $amount): TransferResponse
+    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, Money $amount): TransferResponse
     {
         throw new GatewayException('Wallets not supported by Ether Global Assets');
     }
@@ -378,7 +386,7 @@ class EtherGlobalAssetsGateway implements PaymentGatewayInterface
         throw new GatewayException('Escrow not supported by Ether Global Assets');
     }
 
-    public function partialReleaseEscrow(string $escrowId, float $amount): EscrowResponse
+    public function partialReleaseEscrow(string $escrowId, Money $amount): EscrowResponse
     {
         throw new GatewayException('Escrow not supported by Ether Global Assets');
     }

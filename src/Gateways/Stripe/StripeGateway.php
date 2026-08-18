@@ -180,36 +180,37 @@ class StripeGateway implements PaymentGatewayInterface
     public function createCustomer(CustomerRequest $request): CustomerResponse
     {
         $data = [
-            'name' => $request->name,
-            'email' => $request->email,
+            'name'  => $request->name,
+            'email' => $request->email->value(),
         ];
 
         if ($request->phone) {
             $data['phone'] = $request->phone;
         }
 
-        if ($request->documentNumber) {
-            $data['metadata[document_number]'] = $request->documentNumber;
+        if ($request->document) {
+            $data['metadata[document_number]'] = $request->document->value();
         }
 
         if ($request->address) {
-            $data['address[line1]'] = $request->address['street'] ?? null;
-            $data['address[line2]'] = $request->address['complement'] ?? null;
-            $data['address[city]'] = $request->address['city'] ?? null;
-            $data['address[state]'] = $request->address['state'] ?? null;
+            $data['address[line1]']       = $request->address['street'] ?? null;
+            $data['address[line2]']       = $request->address['complement'] ?? null;
+            $data['address[city]']        = $request->address['city'] ?? null;
+            $data['address[state]']       = $request->address['state'] ?? null;
             $data['address[postal_code]'] = $request->address['zipcode'] ?? null;
-            $data['address[country]'] = $request->address['country'] ?? 'US';
+            $data['address[country]']     = $request->address['country'] ?? 'US';
         }
 
         $response = $this->request('POST', '/customers', $data);
 
         return new CustomerResponse(
-            success: true,
-            customerId: $response['id'],
-            message: 'Customer created successfully',
+            success:     true,
+            customerId:  $response['id'],
+            message:     'Customer created successfully',
             rawResponse: $response
         );
     }
+
 
     public function updateCustomer(string $customerId, array $data): CustomerResponse
     {
@@ -260,90 +261,80 @@ class StripeGateway implements PaymentGatewayInterface
     
     // ==================== CARTÃO DE CRÉDITO ====================
     
-	public function createCreditCardPayment(CreditCardPaymentRequest $request): PaymentResponse{
-		// Criar/buscar customer
-		$customerData = [
-			'name' => $request->customerName ?? 'Customer',
-			'email' => $request->customerEmail?->value() ?? 'customer@example.com',
-		];
+    public function createCreditCardPayment(CreditCardPaymentRequest $request): PaymentResponse
+    {
+        $customerData = [
+            'name'  => $request->customerName ?? 'Customer',
+            'email' => $request->customerEmail?->value() ?? 'customer@example.com',
+        ];
 
-		// ✅ FIX 1: customerDocument é string, não objeto
-		if ($request->customerDocument) {
-			$customerData['metadata[document]'] = $request->customerDocument;
-		}
+        if ($request->customerDocument) {
+            $customerData['metadata[document]'] = $request->customerDocument;
+        }
 
-		$customerResponse = $this->request('POST', '/customers', $customerData);
-		$customerId = $customerResponse['id'];
+        $customerResponse = $this->request('POST', '/customers', $customerData);
+        $customerId = $customerResponse['id'];
 
-		// Criar PaymentMethod com cartão
-		$pmData = [
-			'type' => 'card',
-			// ✅ FIX 2: usar value() ao invés de sanitized()
-			'card[number]' => $request->cardNumber->value(),
-			'card[exp_month]' => $request->cardExpiryMonth,
-			'card[exp_year]' => $request->cardExpiryYear,
-			'card[cvc]' => $request->cardCvv,
-		];
+        $pmData = [
+            'type'           => 'card',
+            'card[number]'   => $request->cardNumber->value(),
+            'card[exp_month]'=> $request->cardExpiryMonth,
+            'card[exp_year]' => $request->cardExpiryYear,
+            'card[cvc]'      => $request->cardCvv,
+        ];
 
-		if ($request->cardHolderName) {
-			$pmData['billing_details[name]'] = $request->cardHolderName;
-		}
+        if ($request->cardHolderName) {
+            $pmData['billing_details[name]'] = $request->cardHolderName;
+        }
 
-		$paymentMethod = $this->request('POST', '/payment_methods', $pmData);
+        $paymentMethod = $this->request('POST', '/payment_methods', $pmData);
 
-        // Anexar PaymentMethod ao Customer
         $this->request('POST', "/payment_methods/{$paymentMethod['id']}/attach", [
             'customer' => $customerId
         ]);
 
-        // Criar PaymentIntent
-        $amount = $this->convertAmount($request->money->amount());
-        $currency = $this->getCurrencyCode($request->money->currency());
-
         $intentData = [
-            'amount' => $amount,
-            'currency' => $currency,
-            'customer' => $customerId,
-            'payment_method' => $paymentMethod['id'],
-            'confirm' => true,
-            'automatic_payment_methods[enabled]' => false,
-            'capture_method' => 'automatic',
+            'amount'                              => $this->convertAmount($request->money->amount()),
+            'currency'                            => $this->getCurrencyCode($request->money->currency()),
+            'customer'                            => $customerId,
+            'payment_method'                      => $paymentMethod['id'],
+            'confirm'                             => true,
+            'automatic_payment_methods[enabled]'  => false,
+            'capture_method'                      => 'automatic',
         ];
 
         if ($request->description) {
             $intentData['description'] = $request->description;
         }
 
-        // Setup future usage se salvar cartão
-        if ($request->saveCard) {
-            $intentData['setup_future_usage'] = 'off_session';
-        }
-
-        // Metadata para parcelamento
         if ($request->installments > 1) {
             $intentData['metadata[installments]'] = $request->installments;
         }
 
         $response = $this->request('POST', '/payment_intents', $intentData);
 
-        $money = Money::from($this->convertFromStripeAmount($response['amount']), Currency::fromString(strtoupper($response['currency'])));
+        $money = Money::from(
+            $this->convertFromStripeAmount($response['amount']),
+            Currency::fromString(strtoupper($response['currency']))
+        );
 
         return new PaymentResponse(
-            success: $response['status'] === 'succeeded',
+            success:     $response['status'] === 'succeeded',
             transactionId: $response['id'],
-            status: $this->mapStripeStatus($response['status']),
-            money: $money,
-            message: $response['status'] === 'succeeded' ? 'Payment successful' : 'Payment processing',
+            status:      $this->mapStripeStatus($response['status']),
+            money:       $money,
+            message:     $response['status'] === 'succeeded' ? 'Payment successful' : 'Payment processing',
             rawResponse: $response,
-            metadata: [
-                'customer_id' => $customerId,
+            metadata:    [
+                'customer_id'       => $customerId,
                 'payment_method_id' => $paymentMethod['id'],
-                'charge_id' => $response['latest_charge'] ?? null,
-                'card_brand' => $paymentMethod['card']['brand'] ?? null,
-                'card_last4' => $paymentMethod['card']['last4'] ?? null,
+                'charge_id'         => $response['latest_charge'] ?? null,
+                'card_brand'        => $paymentMethod['card']['brand'] ?? null,
+                'card_last4'        => $paymentMethod['card']['last4'] ?? null,
             ]
         );
     }
+
     
     public function tokenizeCard(array $cardData): string
     {
@@ -364,28 +355,32 @@ class StripeGateway implements PaymentGatewayInterface
         return $response['id'];
     }
     
-    public function capturePreAuthorization(string $transactionId, ?float $amount = null): PaymentResponse
+    public function capturePreAuthorization(string $transactionId, ?Money $amount = null): PaymentResponse
     {
         $data = [];
-        
+
         if ($amount !== null) {
-            $data['amount_to_capture'] = $this->convertAmount($amount);
+            $data['amount_to_capture'] = $this->convertAmount($amount->amount());
         }
 
         $response = $this->request('POST', "/payment_intents/{$transactionId}/capture", $data);
 
-        $money = Money::from($this->convertFromStripeAmount($response['amount']), Currency::fromString(strtoupper($response['currency'])));
+        $money = Money::from(
+            $this->convertFromStripeAmount($response['amount']),
+            Currency::fromString(strtoupper($response['currency']))
+        );
 
         return new PaymentResponse(
-            success: true,
+            success:      true,
             transactionId: $response['id'],
-            status: $this->mapStripeStatus($response['status']),
-            money: $money,
-            message: 'Pre-authorization captured successfully',
-            rawResponse: $response
+            status:       $this->mapStripeStatus($response['status']),
+            money:        $money,
+            message:      'Pre-authorization captured successfully',
+            rawResponse:  $response
         );
     }
-    
+
+
     public function cancelPreAuthorization(string $transactionId): PaymentResponse
     {
         $response = $this->request('POST', "/payment_intents/{$transactionId}/cancel");
@@ -586,27 +581,31 @@ class StripeGateway implements PaymentGatewayInterface
         );
     }
     
-    public function partialRefund(string $transactionId, float $amount): RefundResponse
+    public function partialRefund(string $transactionId, Money $amount): RefundResponse
     {
         $data = [
             'payment_intent' => $transactionId,
-            'amount' => $this->convertAmount($amount),
+            'amount'         => $this->convertAmount($amount->amount()),
         ];
 
         $response = $this->request('POST', '/refunds', $data);
 
-        $money = Money::from($this->convertFromStripeAmount($response['amount']), Currency::fromString(strtoupper($response['currency'])));
+        $money = Money::from(
+            $this->convertFromStripeAmount($response['amount']),
+            Currency::fromString(strtoupper($response['currency']))
+        );
 
         return new RefundResponse(
-            success: true,
-            refundId: $response['id'],
+            success:       true,
+            refundId:      $response['id'],
             transactionId: $transactionId,
-            money: $money,
-            status: $this->mapStripeStatus($response['status']),
-            message: 'Partial refund processed successfully',
-            rawResponse: $response
+            money:         $money,
+            status:        $this->mapStripeStatus($response['status']),
+            message:       'Partial refund processed successfully',
+            rawResponse:   $response
         );
     }
+
     
     public function getChargebacks(array $filters = []): array
     {
@@ -722,25 +721,27 @@ class StripeGateway implements PaymentGatewayInterface
         throw new GatewayException('Wallets not directly supported - use Customer Balance API or Connect with separate balance tracking');
     }
     
-    public function addBalance(string $walletId, float $amount): WalletResponse
+    public function addBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Wallets not directly supported - use Customer Balance API');
     }
-    
-    public function deductBalance(string $walletId, float $amount): WalletResponse
+
+        
+    public function deductBalance(string $walletId, Money $amount): WalletResponse
     {
         throw new GatewayException('Wallets not directly supported - use Customer Balance API');
     }
-    
+
     public function getWalletBalance(string $walletId): BalanceResponse
     {
         throw new GatewayException('Wallets not directly supported - use Customer Balance API');
     }
     
-    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, float $amount): TransferResponse
+    public function transferBetweenWallets(string $fromWalletId, string $toWalletId, Money $amount): TransferResponse
     {
         throw new GatewayException('Wallet transfers not supported - use Stripe Connect Transfers between accounts');
     }
+
     
     // ==================== ESCROW ====================
     
@@ -754,11 +755,11 @@ class StripeGateway implements PaymentGatewayInterface
         throw new GatewayException('Escrow not directly supported');
     }
     
-    public function partialReleaseEscrow(string $escrowId, float $amount): EscrowResponse
+    public function partialReleaseEscrow(string $escrowId, Money $amount): EscrowResponse
     {
         throw new GatewayException('Escrow not directly supported');
     }
-    
+
     public function cancelEscrow(string $escrowId): EscrowResponse
     {
         throw new GatewayException('Escrow not directly supported');
@@ -786,29 +787,28 @@ class StripeGateway implements PaymentGatewayInterface
     public function createPaymentLink(PaymentLinkRequest $request): PaymentLinkResponse
     {
         $data = [
-            'line_items[0][price_data][currency]' => 'usd',
-            'line_items[0][price_data][product_data][name]' => $request->description ?? 'Payment Link',
-            'line_items[0][price_data][unit_amount]' => $this->convertAmount($request->amount),
-            'line_items[0][quantity]' => 1,
+            'line_items[0][price_data][currency]'          => strtolower($request->currency),
+            'line_items[0][price_data][product_data][name]'=> $request->description ?? 'Payment Link',
+            'line_items[0][price_data][unit_amount]'       => $this->convertAmount($request->amount),
+            'line_items[0][quantity]'                      => 1,
         ];
 
         if ($request->expiresAt) {
-            $data['expires_at'] = strtotime($request->expiresAt);
+            $data['expires_at'] = $request->expiresAt->getTimestamp();
         }
 
-        if (isset($request->metadata['max_uses'])) {
-            // Stripe Payment Links não suportam max_uses diretamente
-            $data['metadata[max_uses]'] = $request->metadata['max_uses'];
+        if ($request->maxUses !== null) {
+            $data['metadata[max_uses]'] = $request->maxUses;
         }
 
         $response = $this->request('POST', '/payment_links', $data);
 
         return new PaymentLinkResponse(
-            success: true,
-            linkId: $response['id'],
-            url: $response['url'],
-            status: $response['active'] ? 'active' : 'inactive',
-            message: 'Payment link created successfully',
+            success:     true,
+            linkId:      $response['id'],
+            url:         $response['url'],
+            status:      $response['active'] ? 'active' : 'inactive',
+            message:     'Payment link created successfully',
             rawResponse: $response
         );
     }
