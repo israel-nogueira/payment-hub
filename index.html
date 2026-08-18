@@ -618,12 +618,49 @@
         }
 
         .sidebar-group-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: .4rem;
             font-size: .7rem;
             font-weight: 600;
             color: var(--muted);
             margin-bottom: .35rem;
             text-transform: uppercase;
             letter-spacing: .06em;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .sidebar-group-label:hover {
+            color: var(--text);
+        }
+
+        .sidebar-group-arrow {
+            font-size: .6rem;
+            transition: transform .15s ease;
+            transform: rotate(-90deg);
+            flex-shrink: 0;
+        }
+
+        .sidebar-group.open .sidebar-group-arrow {
+            transform: rotate(0deg);
+        }
+
+        .sidebar-group-links {
+            display: grid;
+            grid-template-rows: 0fr;
+            overflow: hidden;
+            transition: grid-template-rows .18s ease;
+        }
+
+        .sidebar-group-links>div {
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .sidebar-group.open .sidebar-group-links {
+            grid-template-rows: 1fr;
         }
 
         .sidebar-link {
@@ -1206,42 +1243,94 @@
             <!-- SIDEBAR -->
             <aside class="docs-sidebar">
                 <div class="sidebar-title">// documentação</div>
-                <div class="sidebar-group">
-                    <div class="sidebar-group-label">Início</div>
-                    <a class="sidebar-link" href="#doc-config">Configuração</a>
-                    <a class="sidebar-link" href="#doc-storage">Persistência</a>
+                <div class="sidebar-group open">
+                    <div class="sidebar-group-label" onclick="toggleSidebarGroup(this.parentElement)">
+                        <span>Início</span><span class="sidebar-group-arrow">▾</span>
+                    </div>
+                    <div class="sidebar-group-links">
+                        <div>
+                            <a class="sidebar-link" href="#doc-config">Configuração</a>
+                            <a class="sidebar-link" href="#doc-storage">Persistência</a>
+                        </div>
+                    </div>
                 </div>
                 <div class="sidebar-group">
-                    <div class="sidebar-group-label">Pagamentos</div>
-                    <a class="sidebar-link" href="#doc-pix">PIX</a>
-                    <a class="sidebar-link" href="#doc-credit">Cartão de Crédito</a>
-                    <a class="sidebar-link" href="#doc-debit">Cartão de Débito</a>
-                    <a class="sidebar-link" href="#doc-boleto">Boleto</a>
-                    <a class="sidebar-link" href="#doc-split">Split</a>
-                    <a class="sidebar-link" href="#doc-link">Link de Pagamento</a>
+                    <div class="sidebar-group-label" onclick="toggleSidebarGroup(this.parentElement)">
+                        <span>Pagamentos</span><span class="sidebar-group-arrow">▾</span>
+                    </div>
+                    <div class="sidebar-group-links">
+                        <div>
+                            <a class="sidebar-link" href="#doc-pix">PIX</a>
+                            <a class="sidebar-link" href="#doc-credit">Cartão de Crédito</a>
+                            <a class="sidebar-link" href="#doc-debit">Cartão de Débito</a>
+                            <a class="sidebar-link" href="#doc-boleto">Boleto</a>
+                            <a class="sidebar-link" href="#doc-split">Split</a>
+                            <a class="sidebar-link" href="#doc-link">Link de Pagamento</a>
+                        </div>
+                    </div>
                 </div>
                 <div class="sidebar-group">
-                    <div class="sidebar-group-label">Gestão</div>
-                    <a class="sidebar-link" href="#doc-customers">Clientes</a>
-                    <a class="sidebar-link" href="#doc-subscriptions">Assinaturas</a>
-                    <a class="sidebar-link" href="#doc-transactions">Transações</a>
-                    <a class="sidebar-link" href="#doc-refunds">Estornos</a>
+                    <div class="sidebar-group-label" onclick="toggleSidebarGroup(this.parentElement)">
+                        <span>Gestão</span><span class="sidebar-group-arrow">▾</span>
+                    </div>
+                    <div class="sidebar-group-links">
+                        <div>
+                            <a class="sidebar-link" href="#doc-customers">Clientes</a>
+                            <a class="sidebar-link" href="#doc-subscriptions">Assinaturas</a>
+                            <a class="sidebar-link" href="#doc-transactions">Transações</a>
+                            <a class="sidebar-link" href="#doc-refunds">Estornos</a>
+                        </div>
+                    </div>
                 </div>
                 <div class="sidebar-group">
-                    <div class="sidebar-group-label">Financeiro</div>
-                    <a class="sidebar-link" href="#doc-wallets">Wallets</a>
-                    <a class="sidebar-link" href="#doc-subaccounts">Sub-contas</a>
-                    <a class="sidebar-link" href="#doc-escrow">Escrow</a>
-                    <a class="sidebar-link" href="#doc-transfers">Transferências</a>
-                    <a class="sidebar-link" href="#doc-balance">Saldo</a>
+                    <div class="sidebar-group-label" onclick="toggleSidebarGroup(this.parentElement)">
+                        <span>Financeiro</span><span class="sidebar-group-arrow">▾</span>
+                    </div>
+                    <div class="sidebar-group-links">
+                        <div>
+                            <a class="sidebar-link" href="#doc-wallets">Wallets</a>
+                            <a class="sidebar-link" href="#doc-subaccounts">Sub-contas</a>
+                            <a class="sidebar-link" href="#doc-escrow">Escrow</a>
+                            <a class="sidebar-link" href="#doc-transfers">Transferências</a>
+                            <a class="sidebar-link" href="#doc-balance">Saldo</a>
+                        </div>
+                    </div>
                 </div>
                 <div class="sidebar-group">
-                    <div class="sidebar-group-label">Avançado</div>
-                    <a class="sidebar-link" href="#doc-fraud">Antifraude</a>
-                    <a class="sidebar-link" href="#doc-webhooks">Webhooks</a>
-                    <a class="sidebar-link" href="#doc-cards-table">Cartões de teste</a>
+                    <div class="sidebar-group-label" onclick="toggleSidebarGroup(this.parentElement)">
+                        <span>Avançado</span><span class="sidebar-group-arrow">▾</span>
+                    </div>
+                    <div class="sidebar-group-links">
+                        <div>
+                            <a class="sidebar-link" href="#doc-fraud">Antifraude</a>
+                            <a class="sidebar-link" href="#doc-webhooks">Webhooks</a>
+                            <a class="sidebar-link" href="#doc-cards-table">Cartões de teste</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="sidebar-group">
+                    <div class="sidebar-group-label" onclick="toggleSidebarGroup(this.parentElement)">
+                        <span>Ferramentas</span><span class="sidebar-group-arrow">▾</span>
+                    </div>
+                    <div class="sidebar-group-links">
+                        <div>
+                            <a class="sidebar-link" href="#doc-postman">Postman Collection</a>
+                            <a class="sidebar-link" href="#doc-webhook-handlers">Webhook Handlers</a>
+                            <a class="sidebar-link" href="#doc-tests">Testes Automatizados</a>
+                            <a class="sidebar-link" href="#doc-mtls">Certificados mTLS</a>
+                            <a class="sidebar-link" href="#doc-exceptions">Exceções</a>
+                        </div>
+                    </div>
                 </div>
             </aside>
+
+            <script>
+                function toggleSidebarGroup(group) {
+                    const wasOpen = group.classList.contains('open');
+                    document.querySelectorAll('.docs-sidebar .sidebar-group').forEach(g => g.classList.remove('open'));
+                    if (!wasOpen) group.classList.add('open');
+                }
+            </script>
 
             <!-- CONTENT -->
             <div class="docs-content">
@@ -1395,7 +1484,8 @@
 <span class="c-kw">echo</span> <span class="c-var">$response</span>->rawResponse[<span class="c-str">'card_brand'</span>]; <span class="c-comment">// mastercard</span></pre>
                     </div>
                     <div class="tip-box">💡 Sem parcelamento — <code>DebitCardPaymentRequest</code> não aceita
-                        <code>installments</code>, diferente do cartão de crédito.</div>
+                        <code>installments</code>, diferente do cartão de crédito.
+                    </div>
                 </div>
                 <div class="docs-section" id="doc-boleto">
                     <h2 class="docs-h2">🧾 Boleto</h2>
@@ -1683,6 +1773,265 @@
                             produção. Não valida CPF, cartões reais ou envia webhooks de verdade.</span></div>
                 </div>
 
+                <div class="docs-section" id="doc-postman">
+                    <h2 class="docs-h2">📮 Postman Collection</h2>
+                    <p class="docs-p">O repositório inclui uma collection completa do Postman cobrindo todos os
+                        endpoints da API, mais 2 environments prontos (Dev/Prod) e 5 exemplos de webhooks recebidos.
+                        Não é necessária para usar a lib — instale via Composer normalmente — mas ajuda a explorar o
+                        contrato de cada gateway antes de integrar.</p>
+
+                    <div class="docs-table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Grupo</th>
+                                    <th>Endpoints</th>
+                                    <th>Exemplos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="color:var(--text)">PIX</td>
+                                    <td>3</td>
+                                    <td>criar, QR Code, copia e cola</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--text)">Cartão de Crédito</td>
+                                    <td>5</td>
+                                    <td>criar, tokenizar, pré-autorização, captura, cancelamento</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--text)">Boleto</td>
+                                    <td>3</td>
+                                    <td>criar, obter URL, cancelar</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--text)">Assinaturas</td>
+                                    <td>4</td>
+                                    <td>criar, cancelar, suspender, reativar</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--text)">Estornos</td>
+                                    <td>2</td>
+                                    <td>total, parcial</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--text)">Transações</td>
+                                    <td>2</td>
+                                    <td>consultar status, listar</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--text)">Split de Pagamento</td>
+                                    <td>1</td>
+                                    <td>dividir recebimento</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--text)">Sub-contas</td>
+                                    <td>4</td>
+                                    <td>criar, obter, ativar, desativar</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--text)">Wallets</td>
+                                    <td>5</td>
+                                    <td>criar, saldo, add/subtrair, transferir entre wallets</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--text)">Escrow</td>
+                                    <td>4</td>
+                                    <td>reter, liberar total/parcial, cancelar</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--text)">Links de Pagamento</td>
+                                    <td>3</td>
+                                    <td>criar, obter, expirar</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--text)">Clientes</td>
+                                    <td>4</td>
+                                    <td>criar, obter, atualizar, listar</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--text)">Webhooks</td>
+                                    <td>3</td>
+                                    <td>registrar, listar, remover</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--text)">Saldo</td>
+                                    <td>1</td>
+                                    <td>consultar saldo</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--text)">Webhook Samples (Incoming)</td>
+                                    <td>5</td>
+                                    <td>payment.approved, declined, refund, subscription, chargeback</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">environments disponíveis</span>
+                        </div>
+                        <pre><span class="c-comment">// Development</span>
+<span class="c-str">BASE_URL</span>     = <span class="c-str">'http://localhost:8000/api/v1'</span>
+<span class="c-str">API_KEY</span>      = <span class="c-str">'your-dev-api-key-here'</span>
+
+<span class="c-comment">// Production</span>
+<span class="c-str">BASE_URL</span>     = <span class="c-str">'https://api.payment-hub.com/v1'</span>
+<span class="c-str">API_KEY</span>      = <span class="c-str">'your-production-api-key-here'</span>
+
+<span class="c-comment">// Variáveis compartilhadas: TRANSACTION_ID, CUSTOMER_ID, CARD_TOKEN,</span>
+<span class="c-comment">// SUBSCRIPTION_ID, WALLET_ID, YOUR_WEBHOOK_URL</span></pre>
+                    </div>
+                </div>
+
+                <div class="docs-section" id="doc-webhook-handlers">
+                    <h2 class="docs-h2">🔔 Webhook Handlers</h2>
+                    <p class="docs-p">A seção <a href="#doc-webhooks" style="color:var(--green)">Webhooks</a> mostra
+                        como registrar uma URL via API. Já os <strong>Webhook Handlers</strong> abaixo são classes
+                        dedicadas para <em>processar</em> os eventos recebidos de bancos específicos — cada um com o
+                        próprio esquema de autenticação e formato de payload.</p>
+
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">BancoDoBrasilWebhookHandler —
+                                token fixo</span></div>
+                        <pre><span class="c-comment">// BB não usa HMAC. Autentica via token fixo no header</span>
+<span class="c-comment">// x-webhook-token (PIX) ou Authorization: Bearer (Cobrança)</span>
+<span class="c-var">$handler</span> = <span class="c-kw">new</span> <span class="c-cls">BancoDoBrasilWebhookHandler</span>(
+    webhookToken:  <span class="c-var">$_ENV</span>[<span class="c-str">'BB_WEBHOOK_TOKEN'</span>],
+    validateToken: <span class="c-kw">true</span>
+);
+
+<span class="c-var">$handler</span>-><span class="c-fn">onPixRecebido</span>(<span class="c-kw">function</span> (<span class="c-kw">array</span> <span class="c-var">$event</span>) {
+    <span class="c-comment">// $event['txid'], $event['endToEndId'], $event['valor'], $event['pagador']</span>
+    <span class="c-cls">Orders</span>::<span class="c-fn">confirm</span>(<span class="c-var">$event</span>[<span class="c-str">'txid'</span>], <span class="c-var">$event</span>[<span class="c-str">'valor'</span>]);
+});
+
+<span class="c-var">$handler</span>-><span class="c-fn">onBoletoLiquidado</span>(<span class="c-kw">function</span> (<span class="c-kw">array</span> <span class="c-var">$event</span>) {
+    <span class="c-cls">Orders</span>::<span class="c-fn">markPaid</span>(<span class="c-var">$event</span>[<span class="c-str">'nossoNumero'</span>]);
+});
+
+<span class="c-var">$handler</span>-><span class="c-fn">onUnknownEvent</span>(<span class="c-kw">fn</span>(<span class="c-var">$e</span>) => <span class="c-cls">Log</span>::<span class="c-fn">warning</span>(<span class="c-str">'BB evento desconhecido'</span>, <span class="c-var">$e</span>));
+
+<span class="c-comment">// Endpoint do webhook:</span>
+<span class="c-var">$result</span> = <span class="c-var">$handler</span>-><span class="c-fn">handle</span>(); <span class="c-comment">// lê php://input + getallheaders()</span>
+<span class="c-var">$handler</span>-><span class="c-fn">respondOk</span>(<span class="c-var">$result</span>); <span class="c-comment">// HTTP 200 rápido (fastcgi_finish_request)</span></pre>
+                    </div>
+
+                    <div class="docs-code">
+                        <div class="docs-code-bar"><span class="docs-code-label">BofACashProWebhookHandler — HMAC-SHA256
+                                +
+                                IP whitelist</span></div>
+                        <pre><span class="c-comment">// BofA assina o body bruto com HMAC-SHA256 (header X-BofA-Signature)</span>
+<span class="c-comment">// e pode validar IP de origem como camada extra</span>
+<span class="c-var">$handler</span> = <span class="c-kw">new</span> <span class="c-cls">BofACashProWebhookHandler</span>(
+    webhookSecret: <span class="c-var">$_ENV</span>[<span class="c-str">'BOFA_WEBHOOK_SECRET'</span>],
+    validateIp:    <span class="c-kw">true</span>,
+    allowedIps:    [<span class="c-str">'198.51.100.10'</span>, <span class="c-str">'198.51.100.11'</span>]
+);
+
+<span class="c-var">$handler</span>-><span class="c-fn">onPaymentReceived</span>(<span class="c-kw">function</span> (<span class="c-kw">array</span> <span class="c-var">$event</span>) {
+    <span class="c-comment">// $event['paymentType']: ZELLE | ACH_SAME_DAY | ACH_STANDARD | WIRE</span>
+    <span class="c-comment">// $event['amount'], $event['senderEmail'], $event['memo']...</span>
+    <span class="c-cls">Ledger</span>::<span class="c-fn">credit</span>(<span class="c-var">$event</span>[<span class="c-str">'accountId'</span>], <span class="c-var">$event</span>[<span class="c-str">'amount'</span>]);
+});
+
+<span class="c-var">$handler</span>-><span class="c-fn">on</span>(<span class="c-cls">BofACashProWebhookHandler</span>::<span class="c-var">EVENT_PAYMENT_FAILED</span>, <span class="c-kw">fn</span>(<span class="c-var">$e</span>) =>
+    <span class="c-cls">Log</span>::<span class="c-fn">warning</span>(<span class="c-str">'Pagamento falhou'</span>, [<span class="c-str">'id'</span> => <span class="c-var">$e</span>[<span class="c-str">'paymentId'</span>]]));
+
+<span class="c-var">$result</span> = <span class="c-var">$handler</span>-><span class="c-fn">handle</span>();
+<span class="c-var">$handler</span>-><span class="c-fn">respondOk</span>(<span class="c-var">$result</span>);</pre>
+                    </div>
+
+                    <div class="docs-table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Handler</th>
+                                    <th>Autenticação</th>
+                                    <th>Eventos</th>
+                                    <th>Idempotência</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="color:var(--text)">BancoDoBrasilWebhookHandler</td>
+                                    <td>Token fixo (header, <code>hash_equals</code>)</td>
+                                    <td>PIX recebido/devolvido, Boleto liquidado/vencido/baixado</td>
+                                    <td><code>txid</code> / <code>nossoNumero</code></td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--text)">BofACashProWebhookHandler</td>
+                                    <td>HMAC-SHA256 + IP whitelist opcional</td>
+                                    <td>Payment received/sent/failed/returned/cancelled, saldo baixo, extrato</td>
+                                    <td><code>eventId</code></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="warn-box">⚠️ <span>Ambos os handlers esperam responder <strong>HTTP 200 em até
+                                10s</strong>.
+                            Use <code>respondOk()</code> logo após <code>handle()</code> e processe lógica pesada de
+                            forma assíncrona (fila/job) para evitar reenvios do banco.</span></div>
+                </div>
+
+                <div class="docs-section" id="doc-tests">
+                    <h2 class="docs-h2">🧪 Testes Automatizados</h2>
+                    <p class="docs-p">150+ testes unitários e de integração garantindo qualidade em cada gateway.</p>
+                    <div class="docs-table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Gateway</th>
+                                    <th>Testes</th>
+                                    <th>Cobertura</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="color:var(--text)">Banco do Brasil</td>
+                                    <td>50+</td>
+                                    <td>⭐⭐⭐⭐⭐</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--text)">BofA CashPro</td>
+                                    <td>40+</td>
+                                    <td>⭐⭐⭐⭐⭐</td>
+                                </tr>
+                                <tr>
+                                    <td style="color:var(--text)">Itaú</td>
+                                    <td>30+</td>
+                                    <td>⭐⭐⭐⭐</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="docs-section" id="doc-mtls">
+                    <h2 class="docs-h2">🔐 Certificados mTLS</h2>
+                    <p class="docs-p">Banco do Brasil e Itaú exigem certificados ICP-Brasil em produção.</p>
+                    <div class="docs-code">
+                        <pre><span class="c-var">$gateway</span> = <span class="c-kw">new</span> <span class="c-cls">ItauGateway</span>(
+    clientId:     <span class="c-var">$_ENV</span>[<span class="c-str">'ITAU_CLIENT_ID'</span>],
+    clientSecret: <span class="c-var">$_ENV</span>[<span class="c-str">'ITAU_CLIENT_SECRET'</span>],
+    sandbox:      <span class="c-kw">false</span>,
+    certPath:     <span class="c-str">'/certs/itau-prod.pfx'</span>,
+    certPassword: <span class="c-var">$_ENV</span>[<span class="c-str">'ITAU_CERT_PASSWORD'</span>]
+);</pre>
+                    </div>
+                </div>
+
+                <div class="docs-section" id="doc-exceptions">
+                    <h2 class="docs-h2">🚨 Exceções Específicas</h2>
+                    <div class="pills">
+                        <div class="pill">InvalidAmountException</div>
+                        <div class="pill">InvalidCardNumberException</div>
+                        <div class="pill">InvalidDocumentException</div>
+                        <div class="pill">InvalidEmailException</div>
+                        <div class="pill">GatewayException</div>
+                    </div>
+                </div>
 
 
 
